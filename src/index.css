@@ -1,0 +1,17 @@
+/* Global styles for Sneat integration */
+body {
+  font-family: 'Public Sans', sans-serif;
+}
+
+/* Ensure authentication pages have proper background */
+.authentication-wrapper {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+}
+
+/* Fix for React root */
+#root {
+  min-height: 100vh;
+}

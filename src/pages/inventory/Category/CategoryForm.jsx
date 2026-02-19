@@ -1,37 +1,58 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { getCategory, updateCategory, createCategory, getCategories, deleteCategory } from "../../../lib/categoryAPI";
+import {
+  getCategory,
+  updateCategory,
+  createCategory,
+  getCategories
+} from "../../../lib/categoryAPI";
 
 export default function CategoryForm() {
   const navigate = useNavigate();
   const { id } = useParams();
-
   const isEdit = Boolean(id);
 
   const [form, setForm] = useState({
     name: "",
-    description: ""
+    description: "",
+    parentCategoryId: "",
+    isActive: true
   });
 
+  const [allCategories, setAllCategories] = useState([]);
   const [loading, setLoading] = useState(false);
 
-  // Load category if edit
   useEffect(() => {
+    loadCategories();
     if (isEdit) loadCategory();
   }, [id]);
+
+  const loadCategories = async () => {
+    const res = await getCategories();
+    if (res.data.success) {
+      setAllCategories(res.data.data);
+    }
+  };
 
   const loadCategory = async () => {
     const res = await getCategory(id);
     if (res.data.success) {
+      const c = res.data.data;
       setForm({
-        name: res.data.data.name || "",
-        description: res.data.data.description || ""
+        name: c.name || "",
+        description: c.description || "",
+        parentCategoryId: c.parentCategoryId || "",
+        isActive: c.isActive ?? true
       });
     }
   };
 
   const handleChange = (e) => {
-    setForm({ ...form, [e.target.name]: e.target.value });
+    const { name, value, type, checked } = e.target;
+    setForm({
+      ...form,
+      [name]: type === "checkbox" ? checked : value
+    });
   };
 
   const handleSubmit = async (e) => {
@@ -44,7 +65,6 @@ export default function CategoryForm() {
       } else {
         await createCategory(form);
       }
-
       navigate(-1);
     } catch (err) {
       alert("Error saving category");
@@ -57,16 +77,17 @@ export default function CategoryForm() {
     <div className="container-xxl flex-grow-1 container-p-y">
       
       {/* Header */}
-      <div className="d-flex justify-content-between align-items-center mb-4">
-        <h4 className="fw-bold mb-0">
+      <div className="mb-4">
+        <h4 className="fw-bold mb-1">
           {isEdit ? "Edit Category" : "Add Category"}
         </h4>
+        <div className="text-muted small">
+          Inventory / Categories / {isEdit ? "Edit" : "New"}
+        </div>
       </div>
 
-      {/* Card */}
       <div className="card">
         <div className="card-body">
-
           <form onSubmit={handleSubmit}>
             <div className="row g-4">
 
@@ -83,8 +104,28 @@ export default function CategoryForm() {
                 />
               </div>
 
+              {/* Parent */}
+              <div className="col-md-6">
+                <label className="form-label">Parent Category</label>
+                <select
+                  name="parentCategoryId"
+                  className="form-select"
+                  value={form.parentCategoryId}
+                  onChange={handleChange}
+                >
+                  <option value="">None</option>
+                  {allCategories
+                    .filter((c) => c._id !== id)
+                    .map((c) => (
+                      <option key={c._id} value={c._id}>
+                        {c.name}
+                      </option>
+                    ))}
+                </select>
+              </div>
+
               {/* Description */}
-              <div className="col-md-12">
+              <div className="col-12">
                 <label className="form-label">Description</label>
                 <textarea
                   name="description"
@@ -93,6 +134,22 @@ export default function CategoryForm() {
                   value={form.description}
                   onChange={handleChange}
                 />
+              </div>
+
+              {/* Active */}
+              <div className="col-12">
+                <div className="form-check form-switch">
+                  <input
+                    type="checkbox"
+                    name="isActive"
+                    className="form-check-input"
+                    checked={form.isActive}
+                    onChange={handleChange}
+                  />
+                  <label className="form-check-label">
+                    Active Category
+                  </label>
+                </div>
               </div>
 
               {/* Buttons */}
@@ -120,10 +177,8 @@ export default function CategoryForm() {
 
             </div>
           </form>
-
         </div>
       </div>
-
     </div>
   );
 }

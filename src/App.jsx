@@ -6,12 +6,12 @@ import Login from './pages/auth/Login';
 import Dashboard from './pages/dashboard/Dashboard';
 import DashboardLayout from './layouts/DashboardLayout';
 import Categories from './pages/inventory/Category/Categories';
+import CategoryForm from './pages/inventory/Category/CategoryForm';
 import Products from './pages/inventory/Product/Products';
 import ProductForm from './pages/inventory/Product/ProductForm';
 import Stock from './pages/inventory/Stock';
 import LowStock from './pages/inventory/LowStock';
 import Transfers from './pages/inventory/Transfers';
-import CategoryForm from './pages/inventory/Category/CategoryForm';
 
 function App() {
   return (

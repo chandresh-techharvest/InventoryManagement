@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useAuth } from '../context/AuthContext';
+import { useAuth } from '../../context/AuthContext';
 import { useNavigate, Link } from 'react-router-dom';
 
 const TenantRegistration = () => {
@@ -58,7 +58,7 @@ const TenantRegistration = () => {
                             {/* Logo */}
                             <div className="app-brand justify-content-center">
                                 <a href="/" className="app-brand-link gap-2">
-                                    <span className="app-brand-text demo text-body fw-bolder">ERP System</span>
+                                    <span className="app-brand-text demo text-body fw-bolder text-capitalize">ERP System</span>
                                 </a>
                             </div>
 

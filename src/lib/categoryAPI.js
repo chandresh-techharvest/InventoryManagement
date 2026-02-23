@@ -1,6 +1,6 @@
 import api from "./api";
 
-const BASE = import.meta.env.VITE_API_URL + "/categories";
+const BASE = "/categories";
 
 // Get all categories
 export const getCategories = () => api.get(BASE);

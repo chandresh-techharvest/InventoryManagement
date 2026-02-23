@@ -12,6 +12,8 @@ import ProductForm from './pages/inventory/Product/ProductForm';
 import Stock from './pages/inventory/Stock';
 import LowStock from './pages/inventory/LowStock';
 import Transfers from './pages/inventory/Transfers';
+import ParentCategory from './pages/inventory/Category/ParentCategoryForm';
+import ParentCategoryList from './pages/inventory/Category/ParentCategory';
 
 function App() {
   return (
@@ -38,6 +40,11 @@ function App() {
             <Route path="products" element={<Products />} />
             <Route path="products/new" element={<ProductForm />} />
             <Route path="products/:id" element={<ProductForm />} />
+
+            {/* PARENT CATEGORIES */}
+            <Route path="parent-categories" element={<ParentCategoryList />} />
+            <Route path="parent-categories/new" element={<ParentCategory />} />
+            <Route path="parent-categories/:id/edit" element={<ParentCategory />} />
 
             {/* CATEGORY */}
             <Route path="categories" element={<Categories />} />

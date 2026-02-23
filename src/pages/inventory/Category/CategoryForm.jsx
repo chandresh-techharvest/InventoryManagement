@@ -4,8 +4,8 @@ import {
   getCategory,
   updateCategory,
   createCategory,
-  getCategories
 } from "../../../lib/categoryAPI";
+import { getParentCategories } from "../../../lib/parentCategoryAPI";
 
 export default function CategoryForm() {
   const navigate = useNavigate();
@@ -28,22 +28,32 @@ export default function CategoryForm() {
   }, [id]);
 
   const loadCategories = async () => {
-    const res = await getCategories();
+    const res = await getParentCategories();
     if (res.data.success) {
       setAllCategories(res.data.data);
     }
   };
 
   const loadCategory = async () => {
-    const res = await getCategory(id);
-    if (res.data.success) {
-      const c = res.data.data;
-      setForm({
-        name: c.name || "",
-        description: c.description || "",
-        parentCategoryId: c.parentCategoryId || "",
-        isActive: c.isActive ?? true
-      });
+    try {
+      const res = await getCategory(id);
+      console.log("Load category response:", res.data);
+
+      if (res.data.success) {
+        const c = res.data.data;
+
+        setForm({
+          name: c.name || "",
+          description: c.description || "",
+          parentCategoryId:
+            typeof c.parentCategoryId === "object"
+              ? c.parentCategoryId?._id
+              : c.parentCategoryId || "",
+          isActive: c.isActive ?? true
+        });
+      }
+    } catch (err) {
+      console.error("Error loading category", err);
     }
   };
 
@@ -81,9 +91,6 @@ export default function CategoryForm() {
         <h4 className="fw-bold mb-1">
           {isEdit ? "Edit Category" : "Add Category"}
         </h4>
-        <div className="text-muted small">
-          Inventory / Categories / {isEdit ? "Edit" : "New"}
-        </div>
       </div>
 
       <div className="card">

@@ -5,6 +5,8 @@ import api from "../lib/api";
 export default function Sidebar() {
   const [openMenu, setOpenMenu] = useState(null); 
   const [subdomain, setSubdomain] = useState("");
+  const [openInventory, setOpenInventory] = useState(false);
+  const [openCategories, setOpenCategories] = useState(false);
 
   const toggleMenu = (menu) => {
     setOpenMenu(openMenu === menu ? null : menu);
@@ -58,41 +60,82 @@ export default function Sidebar() {
           <span className="menu-header-text">Inventory</span>
         </li>
 
-        <li className={`menu-item ${openMenu === "inventory" ? "open" : ""}`}>
+        <li className={`menu-item ${openInventory ? "open" : ""}`}>
           <div
             className="menu-link menu-toggle"
-            onClick={() => toggleMenu("inventory")}
+            onClick={() => setOpenInventory(!openInventory)}
           >
             <i className="menu-icon tf-icons bx bx-box"></i>
-            <div>Products</div>
+            <div>Inventory</div>
           </div>
 
           <ul className="menu-sub">
+
+            {/* PRODUCTS */}
             <li className="menu-item">
-              <Link to={`/dashboard/${subdomain}/products`} className="menu-link" onClick={handleNavClick}>
-                <div>All Products</div>
+              <Link
+                to={`/dashboard/${subdomain}/products`}
+                className="menu-link"
+                onClick={handleNavClick}
+              >
+                <div>Products</div>
               </Link>
             </li>
-            <li className="menu-item">
-              <Link to={`/dashboard/${subdomain}/categories`} className="menu-link" onClick={handleNavClick}>
+
+            {/* CATEGORIES */}
+            <li
+              className={`menu-item ${openCategories ? "open" : ""}`}
+              onMouseEnter={() => setOpenCategories(true)}
+              onMouseLeave={() => setOpenCategories(false)}
+            >
+              <div className="menu-link menu-toggle">
                 <div>Categories</div>
-              </Link>
+              </div>
+
+              <ul className="menu-sub">
+                <li className="">
+                  <Link
+                    to={`/dashboard/${subdomain}/parent-categories`}
+                    className="menu-link"
+                    onClick={handleNavClick}
+                  >
+                    <div>Parent Categories</div>
+                  </Link>
+                </li>
+
+                <li className="">
+                  <Link
+                    to={`/dashboard/${subdomain}/categories`}
+                    className="menu-link"
+                    onClick={handleNavClick}
+                  >
+                    <div>Sub-Categories</div>
+                  </Link>
+                </li>
+              </ul>
             </li>
+
+            {/* STOCK */}
             <li className="menu-item">
               <Link to="/stock" className="menu-link" onClick={handleNavClick}>
                 <div>Stock</div>
               </Link>
             </li>
+
+            {/* LOW STOCK */}
             <li className="menu-item">
               <Link to="/low-stock" className="menu-link" onClick={handleNavClick}>
                 <div>Low Stock</div>
               </Link>
             </li>
+
+            {/* TRANSFERS */}
             <li className="menu-item">
               <Link to="/transfers" className="menu-link" onClick={handleNavClick}>
                 <div>Transfers</div>
               </Link>
             </li>
+
           </ul>
         </li>
 

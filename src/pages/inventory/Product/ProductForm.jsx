@@ -41,7 +41,7 @@ export default function ProductForm() {
     try {
       const res = await getParentCategories();
       if (res.data.success) {
-        setParentCategories(res.data.data);   // ✅ ARRAY
+        setParentCategories(res.data.data);
       }
     } catch (err) {
       console.error("Parent categories load error", err);

@@ -71,6 +71,17 @@ export default function Sidebar() {
 
           <ul className="menu-sub">
 
+            {/* WAREHOUSE */}
+            <li className="menu-item">
+              <Link
+                to={`/dashboard/${subdomain}/warehouses`}
+                className="menu-link"
+                onClick={handleNavClick}
+              >
+                <div>Warehouses</div>
+              </Link>
+            </li>
+
             {/* PRODUCTS */}
             <li className="menu-item">
               <Link

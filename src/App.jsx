@@ -12,6 +12,10 @@ import ProductForm from './pages/inventory/Product/ProductForm';
 import Stock from './pages/inventory/Stock';
 import LowStock from './pages/inventory/LowStock';
 import Transfers from './pages/inventory/Transfers';
+import ParentCategory from './pages/inventory/Category/ParentCategoryForm';
+import ParentCategoryList from './pages/inventory/Category/ParentCategory';
+import Warehouse from './pages/inventory/warehouse/Warehouse';
+import WarehouseForm from './pages/inventory/warehouse/WarehouseForm';
 
 function App() {
   return (
@@ -34,10 +38,20 @@ function App() {
           >
             <Route index element={<Dashboard />} />
 
+            {/* WAREHOUSE */}
+            <Route path="warehouses" element={<Warehouse />} />
+            <Route path="warehouses/new" element={<WarehouseForm />} />
+            <Route path="warehouses/:id" element={<WarehouseForm />} />
+
             {/* INVENTORY */}
             <Route path="products" element={<Products />} />
             <Route path="products/new" element={<ProductForm />} />
             <Route path="products/:id" element={<ProductForm />} />
+
+            {/* PARENT CATEGORIES */}
+            <Route path="parent-categories" element={<ParentCategoryList />} />
+            <Route path="parent-categories/new" element={<ParentCategory />} />
+            <Route path="parent-categories/:id/edit" element={<ParentCategory />} />
 
             {/* CATEGORY */}
             <Route path="categories" element={<Categories />} />

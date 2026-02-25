@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { createProduct, getProduct, updateProduct } from "../../../lib/productApi";
+import { getParentCategories } from "../../../lib/parentCategoryAPI";
 import api from "../../../lib/api";
 
 export default function ProductForm() {
@@ -8,11 +9,13 @@ export default function ProductForm() {
   const { id } = useParams();
 
   const [categories, setCategories] = useState([]);
+  const [parentCategories, setParentCategories] = useState([]);
 
   const [form, setForm] = useState({
     sku: "",
     name: "",
     description: "",
+    parentCategoryId: "",
     categoryId: "",
     brand: "",
     uom: "PCS",
@@ -29,46 +32,85 @@ export default function ProductForm() {
 
   // ================= LOAD =================
   useEffect(() => {
-    loadCategories();
+    loadParentCategories();
     if (id) loadProduct();
   }, [id]);
 
-  const loadCategories = async () => {
-    const res = await api.get("/categories");
-    if (res.data.success) setCategories(res.data.data);
+  // ✅ FIXED: correct API usage
+  const loadParentCategories = async () => {
+    try {
+      const res = await getParentCategories();
+      if (res.data.success) {
+        setParentCategories(res.data.data);
+      }
+    } catch (err) {
+      console.error("Parent categories load error", err);
+    }
+  };
+
+  const loadCategories = async (parentId) => {
+    try {
+      if (!parentId) {
+        setCategories([]);
+        return;
+      }
+      const res = await api.get(`/categories?parentCategoryId=${parentId}`);
+      if (res.data.success) {
+        setCategories(res.data.data);
+      }
+    } catch (err) {
+      console.error("Categories load error", err);
+    }
   };
 
   const loadProduct = async () => {
-    const res = await getProduct(id);
-    if (res.data.success) {
+    try {
+      const res = await getProduct(id);
+      if (!res.data.success) return;
+
       const p = res.data.data;
 
-      // convert backend attributes object -> array
-      const variants = p.variants?.map(v => ({
-        ...v,
-        attributes: Object.entries(v.attributes || {}).map(([k, val]) => ({
-          key: k,
-          value: val
-        }))
-      }));
+      const parentId = p.categoryId?.parentCategoryId || "";
+
+      // load categories under parent
+      if (parentId) await loadCategories(parentId);
 
       setForm({
         ...p,
         isActive: p.isActive ?? true,
+        parentCategoryId: parentId,
         categoryId: p.categoryId?._id || "",
-        variants: variants?.length
-          ? variants
-          : [{ attributes: [{ key: "", value: "" }], price: "", cost: "" }]
+        variants:
+          p.variants?.map((v) => ({
+            ...v,
+            attributes: Object.entries(v.attributes || {}).map(([k, val]) => ({
+              key: k,
+              value: val
+            }))
+          })) || [{ attributes: [{ key: "", value: "" }], price: "", cost: "" }]
       });
+    } catch (err) {
+      console.error("Product load error", err);
     }
   };
 
-  // ================= BASIC HANDLERS =================
+  // ================= HANDLERS =================
+  const handleParentChange = (e) => {
+    const parentId = e.target.value;
+
+    setForm((prev) => ({
+      ...prev,
+      parentCategoryId: parentId,
+      categoryId: ""
+    }));
+
+    loadCategories(parentId);
+  };
+
   const handleChange = (e) => {
     setForm({ ...form, [e.target.name]: e.target.value });
   };
 
-  // ================= VARIANT HANDLERS =================
   const handleVariantChange = (vIndex, field, value) => {
     const updated = [...form.variants];
     updated[vIndex][field] = value;
@@ -86,11 +128,12 @@ export default function ProductForm() {
   };
 
   const removeVariant = (vIndex) => {
-    const updated = form.variants.filter((_, i) => i !== vIndex);
-    setForm({ ...form, variants: updated });
+    setForm({
+      ...form,
+      variants: form.variants.filter((_, i) => i !== vIndex)
+    });
   };
 
-  // ================= ATTRIBUTE HANDLERS =================
   const handleAttributeChange = (vIndex, aIndex, field, value) => {
     const updated = [...form.variants];
     updated[vIndex].attributes[aIndex][field] = value;
@@ -117,22 +160,17 @@ export default function ProductForm() {
       const payload = {
         ...form,
         taxRate: Number(form.taxRate),
-        variants: form.variants.map(v => ({
+        variants: form.variants.map((v) => ({
           attributes: Object.fromEntries(
-            v.attributes
-              .filter(a => a.key)
-              .map(a => [a.key, a.value])
+            v.attributes.filter((a) => a.key).map((a) => [a.key, a.value])
           ),
           price: Number(v.price),
           cost: Number(v.cost)
         }))
       };
 
-      if (id) {
-        await updateProduct(id, payload);
-      } else {
-        await createProduct(payload);
-      }
+      if (id) await updateProduct(id, payload);
+      else await createProduct(payload);
 
       navigate(-1);
     } catch (err) {
@@ -147,41 +185,46 @@ export default function ProductForm() {
       <h4 className="mb-4">{id ? "Edit Product" : "Add Product"}</h4>
 
       <form onSubmit={handleSubmit} className="card p-4">
-
-        {/* BASIC INFO */}
         <div className="row g-3">
+
+          {/* SKU */}
           <div className="col-md-4">
             <label className="form-label">SKU</label>
-            <input
-              name="sku"
-              value={form.sku}
-              onChange={handleChange}
-              className="form-control"
-              required
-            />
+            <input name="sku" value={form.sku} onChange={handleChange} className="form-control" required />
           </div>
 
+          {/* NAME */}
           <div className="col-md-4">
             <label className="form-label">Name</label>
-            <input
-              name="name"
-              value={form.name}
-              onChange={handleChange}
-              className="form-control"
-              required
-            />
+            <input name="name" value={form.name} onChange={handleChange} className="form-control" required />
           </div>
 
+          {/* BRAND */}
           <div className="col-md-4">
             <label className="form-label">Brand</label>
-            <input
-              name="brand"
-              value={form.brand}
-              onChange={handleChange}
-              className="form-control"
-            />
+            <input name="brand" value={form.brand} onChange={handleChange} className="form-control" />
           </div>
 
+          {/* PARENT CATEGORY */}
+          <div className="col-md-6">
+            <label className="form-label">Parent Category</label>
+            <select
+              name="parentCategoryId"
+              value={form.parentCategoryId}
+              onChange={handleParentChange}
+              className="form-select"
+              required
+            >
+              <option value="">Select</option>
+              {parentCategories.map((p) => (
+                <option key={p._id} value={p._id}>
+                  {p.name}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {/* CATEGORY */}
           <div className="col-md-6">
             <label className="form-label">Category</label>
             <select
@@ -200,40 +243,29 @@ export default function ProductForm() {
             </select>
           </div>
 
+          {/* UOM */}
           <div className="col-md-3">
             <label className="form-label">UOM</label>
-            <input
-              name="uom"
-              value={form.uom}
-              onChange={handleChange}
-              className="form-control"
-            />
+            <input name="uom" value={form.uom} onChange={handleChange} className="form-control" />
           </div>
 
+          {/* TAX */}
           <div className="col-md-3">
             <label className="form-label">Tax %</label>
-            <input
-              type="number"
-              name="taxRate"
-              value={form.taxRate}
-              onChange={handleChange}
-              className="form-control"
-            />
+            <input type="number" name="taxRate" value={form.taxRate} onChange={handleChange} className="form-control" />
           </div>
 
+          {/* DESC */}
           <div className="col-12">
             <label className="form-label">Description</label>
-            <textarea
-              name="description"
-              value={form.description}
-              onChange={handleChange}
-              className="form-control"
-            />
+            <textarea name="description" value={form.description} onChange={handleChange} className="form-control" />
           </div>
+
         </div>
 
         {/* VARIANTS */}
         <hr className="my-4" />
+
         <div className="d-flex justify-content-between align-items-center mb-3">
           <h5 className="mb-0">Variants</h5>
         </div>
@@ -259,8 +291,7 @@ export default function ProductForm() {
                 <label className="form-label fw-semibold">Attributes</label>
 
                 {v.attributes.map((attr, ai) => (
-                  <div className="d-flex align-items-end gap-2 mb-2 w-100">
-                    {/* PROPERTY */}
+                  <div key={ai} className="d-flex align-items-end gap-2 mb-2 w-100">
                     <div className="flex-grow-1">
                       <input
                         value={attr.key}
@@ -268,11 +299,10 @@ export default function ProductForm() {
                           handleAttributeChange(vi, ai, "key", e.target.value)
                         }
                         className="form-control"
-                        placeholder="Property (e.g. Color)"
+                        placeholder="Property"
                       />
                     </div>
 
-                    {/* VALUE */}
                     <div className="flex-grow-1">
                       <input
                         value={attr.value}
@@ -280,15 +310,14 @@ export default function ProductForm() {
                           handleAttributeChange(vi, ai, "value", e.target.value)
                         }
                         className="form-control"
-                        placeholder="Value (e.g. Red)"
+                        placeholder="Value"
                       />
                     </div>
 
-                    {/* REMOVE BUTTON — RIGHT EDGE */}
                     <button
                       type="button"
-                      className="btn btn-outline-danger ms-auto"
-                      style={{ height: "38px", minWidth: "42px" }}
+                      className="btn btn-outline-danger"
+                      style={{ height: "38px" }}
                       onClick={() => removeAttribute(vi, ai)}
                     >
                       ✕
@@ -336,7 +365,6 @@ export default function ProductForm() {
           </div>
         ))}
 
-
         <button
           type="button"
           className="btn btn-outline-primary"
@@ -345,28 +373,23 @@ export default function ProductForm() {
           + Add Variant
         </button>
 
-        {/* SUBMIT */}
-        <div className="mt-4 d-flex justify-content-between align-items-center">
+        <div className="mt-4 d-flex justify-content-between">
           <div className="form-check">
             <input
               type="checkbox"
               id="is-active"
               className="form-check-input"
               checked={form.isActive}
-              onChange={(e) =>
-                setForm({ ...form, isActive: e.target.checked })
-              }
+              onChange={(e) => setForm({ ...form, isActive: e.target.checked })}
             />
             <label className="form-check-label" htmlFor="is-active">
               Is Active
             </label>
           </div>
 
-          <div>
-            <button className="btn btn-primary">
-              {id ? "Update Product" : "Create Product"}
-            </button>
-          </div>
+          <button className="btn btn-primary">
+            {id ? "Update Product" : "Create Product"}
+          </button>
         </div>
       </form>
     </div>

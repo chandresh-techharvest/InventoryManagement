@@ -1,23 +1,64 @@
 import { useEffect, useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link } from "react-router-dom";
 import { getCategories, deleteCategory } from "../../../lib/categoryAPI";
+import { getParentCategories } from "../../../lib/parentCategoryAPI";
 
 export default function Categories() {
   const [categories, setCategories] = useState([]);
+  const [parents, setParents] = useState([]);
   const [search, setSearch] = useState("");
-  const navigate = useNavigate();
+  const [parentFilter, setParentFilter] = useState("");
+  const [statusFilter, setStatusFilter] = useState("");
+
+  const [page, setPage] = useState(1);
+  const pageSize = 10;
 
   const loadCategories = async () => {
     const res = await getCategories();
-    console.log("Categories loaded:", res.data);
-    if (res.data.success) {
-      setCategories(res.data.data);
-    }
+    if (res.data.success) setCategories(res.data.data);
+  };
+
+  const loadParents = async () => {
+    const res = await getParentCategories();
+    setParents(res.data.data || []);
   };
 
   useEffect(() => {
     loadCategories();
+    loadParents();
   }, []);
+
+  // ✅ Filters
+  const filtered = categories.filter((c) => {
+    const matchSearch = c.name
+      .toLowerCase()
+      .includes(search.toLowerCase());
+
+    const matchParent = parentFilter
+      ? c.parentCategoryId?._id === parentFilter
+      : true;
+
+    const matchStatus =
+      statusFilter === ""
+        ? true
+        : statusFilter === "active"
+        ? c.isActive
+        : !c.isActive;
+
+    return matchSearch && matchParent && matchStatus;
+  });
+
+  // ✅ Pagination (AFTER filtered)
+  const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
+
+  const paginated = filtered.slice(
+    (page - 1) * pageSize,
+    page * pageSize
+  );
+
+  useEffect(() => {
+    setPage(1);
+  }, [search, parentFilter, statusFilter]);
 
   const handleDelete = async (id) => {
     if (window.confirm("Delete this category?")) {
@@ -26,16 +67,19 @@ export default function Categories() {
     }
   };
 
-  const filtered = categories.filter((c) =>
-    c.name.toLowerCase().includes(search.toLowerCase())
-  );
+  const resetFilters = () => {
+    setSearch("");
+    setParentFilter("");
+    setStatusFilter("");
+  };
 
   return (
     <div className="container-xxl flex-grow-1 container-p-y">
 
       {/* Header */}
       <div className="d-flex justify-content-between align-items-center mb-4">
-        <h4 className="fw-bold mb-0">Categories</h4>
+        <h4 className="fw-bold mb-0">Sub-Categories</h4>
+
         <Link to="new" className="btn btn-primary">
           <i className="bx bx-plus me-1"></i> Add Category
         </Link>
@@ -43,22 +87,49 @@ export default function Categories() {
 
       {/* Filters */}
       <div className="card mb-3">
-        <div className="card-body d-flex gap-3 align-items-center">
-          <div className="input-group">
-            <span className="input-group-text">
+        <div className="card-body d-flex gap-2 flex-wrap align-items-center">
+
+          <div className="input-group" style={{ maxWidth: 730 }}>
+            <span className="input-group-text bg-white">
               <i className="bx bx-search"></i>
             </span>
             <input
               type="text"
               className="form-control border-start-0"
-              placeholder="Search category..."
+              placeholder="Search name..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
             />
           </div>
+
+          <select
+            className="form-select"
+            style={{ width: 160 }}
+            value={parentFilter}
+            onChange={(e) => setParentFilter(e.target.value)}
+          >
+            <option value="">All Parents</option>
+            {parents.map((p) => (
+              <option key={p._id} value={p._id}>
+                {p.name}
+              </option>
+            ))}
+          </select>
+
+          <select
+            className="form-select"
+            style={{ width: 160 }}
+            value={statusFilter}
+            onChange={(e) => setStatusFilter(e.target.value)}
+          >
+            <option value="">All Status</option>
+            <option value="active">Active</option>
+            <option value="inactive">Inactive</option>
+          </select>
+
           <button
             className="btn btn-outline-secondary"
-            onClick={() => setSearch("")}
+            onClick={resetFilters}
           >
             Reset
           </button>
@@ -69,68 +140,53 @@ export default function Categories() {
       <div className="card">
         <div className="table-responsive">
           <table className="table align-middle">
-            <thead>
+            <thead className="table-light">
               <tr>
                 <th>Category</th>
-                {/* <th>Parent</th> */}
                 <th>Products</th>
                 <th>Status</th>
                 <th>Created</th>
                 <th width="170">Actions</th>
               </tr>
             </thead>
+
             <tbody>
-              {filtered.length === 0 ? (
+              {paginated.length === 0 ? (
                 <tr>
-                  <td colSpan="6" className="text-center text-muted py-4">
+                  <td colSpan="5" className="text-center text-muted py-4">
                     No categories found
                   </td>
                 </tr>
               ) : (
-                filtered.map((c) => (
-                  <tr key={c._id} className="table-row-hover">
+                paginated.map((c) => (
+                  <tr key={c._id}>
+                    <td className="fw-semibold">{c.name}</td>
 
-                    {/* Category */}
-                    <td>
-                      <div className="fw-semibold">{c.name}</div>
-                    </td>
-
-                    {/* Parent — fixed: was c.parentName, now c.parentCategoryId?.name */}
-                    {/* <td>
-                      {c.parentCategoryId?.name ? (
-                        <span className="badge bg-label-info">
-                          {c.parentCategoryId.name}
-                        </span>
-                      ) : (
-                        <span className="text-muted">—</span>
-                      )}
-                    </td> */}
-
-                    {/* Products — now populated by backend */}
                     <td>
                       <span className="badge bg-label-primary">
                         {c.productCount ?? 0}
                       </span>
                     </td>
 
-                    {/* Status */}
                     <td>
-                      {c.isActive ? (
-                        <span className="badge bg-label-success">Active</span>
-                      ) : (
-                        <span className="badge bg-label-secondary">Inactive</span>
-                      )}
+                      <span
+                        className={`badge ${
+                          c.isActive
+                            ? "bg-label-success"
+                            : "bg-label-secondary"
+                        }`}
+                      >
+                        {c.isActive ? "ACTIVE" : "INACTIVE"}
+                      </span>
                     </td>
 
-                    {/* Created */}
                     <td className="text-muted">
                       {c.createdAt
-                        ? new Date(c.createdAt).toLocaleDateString()
+                        ? new Date(c.createdAt).toLocaleDateString("en-GB")
                         : "-"}
                     </td>
 
-                    {/* Actions */}
-                    <td onClick={(e) => e.stopPropagation()}>
+                    <td>
                       <div className="d-flex gap-2">
                         <Link
                           to={`${c._id}/edit`}
@@ -138,6 +194,7 @@ export default function Categories() {
                         >
                           Edit
                         </Link>
+
                         <button
                           className="btn btn-sm btn-outline-danger"
                           onClick={() => handleDelete(c._id)}
@@ -146,13 +203,39 @@ export default function Categories() {
                         </button>
                       </div>
                     </td>
-
                   </tr>
                 ))
               )}
             </tbody>
           </table>
         </div>
+
+        {/* Pagination */}
+        {filtered.length > 0 && (
+          <div className="card-footer d-flex justify-content-between align-items-center">
+            <div className="text-muted small">
+              Page {page} of {totalPages} • {filtered.length} records
+            </div>
+
+            <div className="btn-group">
+              <button
+                className="btn btn-sm btn-outline-secondary"
+                disabled={page === 1}
+                onClick={() => setPage((p) => p - 1)}
+              >
+                Prev
+              </button>
+
+              <button
+                className="btn btn-sm btn-outline-secondary"
+                disabled={page === totalPages}
+                onClick={() => setPage((p) => p + 1)}
+              >
+                Next
+              </button>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

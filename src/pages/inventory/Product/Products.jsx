@@ -354,47 +354,29 @@ export default function Products() {
         </div>
 
         {/* PAGINATION */}
-        {!loading && filtered.length > 0 && (
-          <div className="card-footer d-flex justify-content-between align-items-center">
-            <span className="text-muted">
-              {(page - 1) * pageSize + 1}–
-              {Math.min(page * pageSize, filtered.length)} of{" "}
-              {filtered.length}
-            </span>
-
-            <div className="btn-group">
-              <button
-                className="btn btn-sm btn-outline-secondary"
-                disabled={page === 1}
-                onClick={() => setPage(1)}
-              >
-                «
-              </button>
-              <button
-                className="btn btn-sm btn-outline-secondary"
-                disabled={page === 1}
-                onClick={() => setPage((p) => p - 1)}
-              >
-                ‹
-              </button>
-
-              <button
-                className="btn btn-sm btn-outline-secondary"
-                disabled={page === totalPages}
-                onClick={() => setPage((p) => p + 1)}
-              >
-                ›
-              </button>
-              <button
-                className="btn btn-sm btn-outline-secondary"
-                disabled={page === totalPages}
-                onClick={() => setPage(totalPages)}
-              >
-                »
-              </button>
-            </div>
+        <div className="card-footer d-flex justify-content-between align-items-center">
+          <div className="text-muted small">
+            Page {page} of {totalPages} • {filtered.length} records
           </div>
-        )}
+
+          <div className="btn-group">
+            <button
+              className="btn btn-sm btn-outline-secondary"
+              disabled={page === 1}
+              onClick={() => setPage((p) => p - 1)}
+            >
+              Prev
+            </button>
+
+            <button
+              className="btn btn-sm btn-outline-secondary"
+              disabled={page === totalPages}
+              onClick={() => setPage((p) => p + 1)}
+            >
+              Next
+            </button>
+          </div>
+        </div>
       </div>
     </div>
   );

@@ -46,7 +46,7 @@ export default function Sidebar() {
 
       <div className="menu-inner-shadow"></div>
 
-      <ul className="menu-inner py-1" style={{overflowY: "auto", maxHeight:"100vh"}}>
+      <ul className="menu-inner py-1" style={{overflowY: "auto",overflowX:"hidden",maxHeight:"100vh"}}>
         {/* Dashboard */}
         <li className="menu-item">
           <Link to={`/dashboard/${subdomain}`} className="menu-link" onClick={handleNavClick}>

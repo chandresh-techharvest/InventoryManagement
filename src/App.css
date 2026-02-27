@@ -2,3 +2,47 @@
 .table-row-hover:hover {
   background-color: rgba(105, 108, 255, 0.08);
 }
+
+
+
+// DashboardLayout.jsx
+/* ===== Fix full app height ===== */
+.layout-wrapper,
+.layout-container {
+  height: 100vh;
+  overflow: hidden;
+}
+
+/* ===== Sidebar fixed ===== */
+.layout-menu {
+  position: fixed;
+  top: 0;
+  left: 0;
+  height: 100vh;
+  overflow-y: auto;
+}
+
+/* ===== Main area ===== */
+.layout-page {
+  margin-left: 260px; /* sidebar width */
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* ===== Only content scrolls ===== */
+.content-wrapper {
+  flex: 1;
+  overflow-y: auto;
+  padding: 1.5rem;
+}
+
+/* ===== Prevent body scroll ===== */
+body {
+  overflow: hidden;
+}
+
+.layout-menu.layout-menu-collapsed {
+  margin-left: -260px;
+}

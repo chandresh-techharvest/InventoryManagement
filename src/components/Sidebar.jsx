@@ -74,7 +74,7 @@ export default function Sidebar() {
             {/* WAREHOUSE */}
             <li className="menu-item">
               <Link
-                to={`/dashboard/${subdomain}/warehouses`}
+                to={`/dashboard/${subdomain}/inventory/warehouses`}
                 className="menu-link"
                 onClick={handleNavClick}
               >
@@ -85,7 +85,7 @@ export default function Sidebar() {
             {/* PRODUCTS */}
             <li className="menu-item">
               <Link
-                to={`/dashboard/${subdomain}/products`}
+                to={`/dashboard/${subdomain}/inventory/products`}
                 className="menu-link"
                 onClick={handleNavClick}
               >
@@ -106,7 +106,7 @@ export default function Sidebar() {
               <ul className="menu-sub">
                 <li className="">
                   <Link
-                    to={`/dashboard/${subdomain}/parent-categories`}
+                    to={`/dashboard/${subdomain}/inventory/parent-categories`}
                     className="menu-link"
                     onClick={handleNavClick}
                   >
@@ -116,7 +116,7 @@ export default function Sidebar() {
 
                 <li className="">
                   <Link
-                    to={`/dashboard/${subdomain}/categories`}
+                    to={`/dashboard/${subdomain}/inventory/categories`}
                     className="menu-link"
                     onClick={handleNavClick}
                   >
@@ -128,22 +128,29 @@ export default function Sidebar() {
 
             {/* STOCK */}
             <li className="menu-item">
-              <Link to="/stock" className="menu-link" onClick={handleNavClick}>
+              <Link to={`/dashboard/${subdomain}/inventory/stock`} className="menu-link" onClick={handleNavClick}>
                 <div>Stock</div>
               </Link>
             </li>
 
             {/* LOW STOCK */}
-            <li className="menu-item">
-              <Link to="/low-stock" className="menu-link" onClick={handleNavClick}>
+            {/* <li className="menu-item">
+              <Link to={`/dashboard/${subdomain}/inventory/low-stock`} className="menu-link" onClick={handleNavClick}>
                 <div>Low Stock</div>
               </Link>
-            </li>
+            </li> */}
 
             {/* TRANSFERS */}
             <li className="menu-item">
-              <Link to="/transfers" className="menu-link" onClick={handleNavClick}>
+              <Link to={`/dashboard/${subdomain}/inventory/transfers`} className="menu-link" onClick={handleNavClick}>
                 <div>Transfers</div>
+              </Link>
+            </li>
+
+            {/* MOVEMENTS */}
+            <li className="menu-item">
+              <Link to={`/dashboard/${subdomain}/inventory/movements`} className="menu-link">
+                <div>Stock Movements</div>
               </Link>
             </li>
 

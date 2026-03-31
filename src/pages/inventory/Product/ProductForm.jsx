@@ -1,8 +1,67 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { createProduct, getProduct, updateProduct } from "../../../lib/productApi";
+import { createProduct, getProduct, getProducts, updateProduct } from "../../../lib/productApi";
 import { getParentCategories } from "../../../lib/parentCategoryAPI";
 import api from "../../../lib/api";
+import { getSuppliers } from "../../../lib/suppliersAPI";
+
+/* ─────────────────────────────────────────────
+   HELPERS
+───────────────────────────────────────────── */
+const Field = ({ label, required, children, hint, col = "col-12" }) => (
+  <div className={col}>
+    <label className="form-label mb-1" style={{ fontSize: 12.5, fontWeight: 600, color: "#444", textTransform: "uppercase", letterSpacing: ".4px" }}>
+      {label}{required && <span className="text-danger ms-1">*</span>}
+    </label>
+    {children}
+    {hint && <div className="text-muted mt-1" style={{ fontSize: 11.5 }}>{hint}</div>}
+  </div>
+);
+
+const SectionHead = ({ icon, title, subtitle, action }) => (
+  <div className="d-flex align-items-center justify-content-between mb-3" style={{ borderBottom: "1px solid #f0f1f5", paddingBottom: 10 }}>
+    <div className="d-flex align-items-center gap-2">
+      <div
+        className="rounded-2 d-flex align-items-center justify-content-center flex-shrink-0"
+        style={{ width: 30, height: 30, background: "rgba(115,103,240,.1)", fontSize: 15 }}
+      >
+        {icon}
+      </div>
+      <div>
+        <div className="fw-semibold text-dark" style={{ fontSize: 13.5 }}>{title}</div>
+        {subtitle && <div className="text-muted" style={{ fontSize: 11.5 }}>{subtitle}</div>}
+      </div>
+    </div>
+    {action}
+  </div>
+);
+
+/* ─────────────────────────────────────────────
+   TOAST
+───────────────────────────────────────────── */
+const Toast = ({ message, type }) => {
+  const meta = { success: { border: "#28c76f", icon: "✅" }, error: { border: "#ea5455", icon: "❌" } };
+  const m = meta[type] || meta.error;
+  return (
+    <div style={{
+      position: "fixed", top: 24, right: 24, zIndex: 9999,
+      background: "#fff", borderRadius: 12,
+      boxShadow: "0 8px 30px rgba(0,0,0,.14)",
+      padding: "14px 20px",
+      display: "flex", alignItems: "center", gap: 12,
+      minWidth: 300, borderLeft: `4px solid ${m.border}`,
+      animation: "pf-slidein .25s cubic-bezier(.34,1.56,.64,1)",
+    }}>
+      <span style={{ fontSize: 18 }}>{m.icon}</span>
+      <span style={{ fontSize: 13.5, color: "#333", fontWeight: 500 }}>{message}</span>
+    </div>
+  );
+};
+
+/* ─────────────────────────────────────────────
+   VARIANT CARD COLORS (cycles)
+───────────────────────────────────────────── */
+const VARIANT_COLORS = ["#7367f0", "#28c76f", "#00cfe8", "#ff9f43", "#ea5455", "#82868b"];
 
 /* ─────────────────────────────────────────────
    HELPERS
@@ -69,6 +128,8 @@ export default function ProductForm() {
   const navigate  = useNavigate();
   const { id }    = useParams();
 
+  const [suppliers,  setSuppliers]  = useState([]);
+
   /* ── all original state unchanged ── */
   const [categories, setCategories]           = useState([]);
   const [parentCategories, setParentCategories] = useState([]);
@@ -76,7 +137,7 @@ export default function ProductForm() {
   const [form, setForm] = useState({
     sku: "", name: "", description: "",
     parentCategoryId: "", categoryId: "",
-    brand: "", uom: "PCS", taxRate: 0, isActive: true,
+    brand: "", uom: "", taxRate: 0, isActive: true,
     variants: [{ attributes: [{ key: "", value: "" }], price: "", cost: "" }],
   });
 
@@ -99,6 +160,18 @@ export default function ProductForm() {
       return next;
     });
   };
+
+    useEffect(() => {
+      const loadData = async () => {
+        try {
+          const sup = await getSuppliers();
+          setSuppliers(sup.data.data   || []);
+        } catch (err) {
+          showToast("Failed to load Supplier data", "error");
+        }
+      };
+      loadData();
+    }, []);
 
   /* ── all original logic unchanged ── */
   useEffect(() => {
@@ -151,6 +224,32 @@ export default function ProductForm() {
       setLoadingForm(false);
     }
   };
+
+    /* ── Auto-generate Product SKU code ───────────────────────── */
+    const generateSkuCode = async () => {
+      try {
+        const res = await getProducts();
+        if (!res.data.success) return;
+        const all = res.data.data;
+        if (all.length === 0) {
+          setForm((prev) => ({ ...prev, sku: `PROD-001` }));
+          return;
+        }
+        const maxNumber = Math.max(
+          ...all.map((p) => parseInt((p.sku || "PROD-000").split("-")[1]) || 0)
+        );
+        setForm((prev) => ({
+          ...prev,
+          sku: `PROD-${String(maxNumber + 1).padStart(3, "0")}`,
+        }));
+      } catch (err) {
+        console.error("Product SKU generation error", err);
+      }
+    };
+  
+    useEffect(() => {
+      if (!id) generateSkuCode();
+    }, [id]);
 
   const handleParentChange = (e) => {
     const parentId = e.target.value;
@@ -303,7 +402,32 @@ export default function ProductForm() {
                   <SectionHead icon="📦" title="Basic Information" subtitle="Name, SKU, brand and description" />
                   <div className="row g-3">
 
-                    <Field label="SKU" required col="col-md-4"
+                    <Field label="Product Name" required col="col-md-6">
+                      <input name="name" value={form.name} onChange={handleChange}
+                        className={`form-control ${fc}`} style={inp}
+                        placeholder="Full product name" required />
+                    </Field>
+
+                    <Field label="Brand" col="col-md-6">
+                      <input name="brand" value={form.brand} onChange={handleChange}
+                        className={`form-control ${fc}`} style={inp}
+                        placeholder="Brand name" />
+                    </Field>
+
+                     <Field label="Supplier" col="col-md-6">
+                      <select
+                        className={`form-select ${fc}`} style={inp}
+                        value={form.supplierId}
+                        onChange={(e) => setForm({ ...form, supplierId: e.target.value })}
+                      >
+                        <option value="">Select Supplier</option>
+                        {suppliers.map((s) => (
+                          <option key={s._id} value={s._id}>{s.name}</option>
+                        ))}
+                      </select>
+                    </Field>
+
+                    <Field label="SKU" required col="col-md-6"
                       hint="Unique stock-keeping unit identifier">
                       <div className="input-group">
                         <span className="input-group-text bg-transparent" style={{ borderColor: "#e0e2e9" }}>
@@ -312,20 +436,8 @@ export default function ProductForm() {
                         <input name="sku" value={form.sku} onChange={handleChange}
                           className={`form-control border-start-0 ${fc}`}
                           style={{ ...inp, fontFamily: "monospace", textTransform: "uppercase" }}
-                          placeholder="e.g. PROD-001" required />
+                          disabled />
                       </div>
-                    </Field>
-
-                    <Field label="Product Name" required col="col-md-5">
-                      <input name="name" value={form.name} onChange={handleChange}
-                        className={`form-control ${fc}`} style={inp}
-                        placeholder="Full product name" required />
-                    </Field>
-
-                    <Field label="Brand" col="col-md-3">
-                      <input name="brand" value={form.brand} onChange={handleChange}
-                        className={`form-control ${fc}`} style={inp}
-                        placeholder="Brand name" />
                     </Field>
 
                     <Field label="Description" col="col-12">
@@ -367,12 +479,20 @@ export default function ProductForm() {
                       </select>
                     </Field>
 
-                    <Field label="Unit of Measure (UOM)" col="col-md-3" hint="e.g. PCS, KG, LTR">
-                      <input name="uom" value={form.uom} onChange={handleChange}
-                        className={`form-control ${fc}`} style={{ ...inp, textTransform: "uppercase", fontFamily: "monospace" }} />
+                    <Field label="Unit of Measure (UOM)" col="col-md-4" required>
+                      <select name="uom" value={form.uom}
+                        onChange={handleChange}
+                        className={`form-select ${fc}`} style={{inp, fontFamily: "monospace"}} required>
+                        <option value="">Select UOM</option>
+                        <option value="PCS">PCS</option>
+                        <option value="LTR">LTR</option>
+                        <option value="KG">KG</option>
+                        <option value="BOX">BOX</option>
+                        <option value="DOZEN">DOZEN</option>
+                      </select>
                     </Field>
 
-                    <Field label="Tax Rate (%)" col="col-md-3">
+                    <Field label="Tax Rate (%)" col="col-md-4" required>
                       <div className="input-group">
                         <input type="number" name="taxRate" value={form.taxRate} onChange={handleChange}
                           className={`form-control ${fc}`} style={inp}

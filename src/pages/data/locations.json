@@ -1,0 +1,47 @@
+{
+  "states": [
+    {
+      "name": "Madhya Pradesh",
+      "cities": [
+        {
+          "name": "Bhopal",
+          "pincodes": ["462001", "462002", "462003"]
+        },
+        {
+          "name": "Indore",
+          "pincodes": ["452001", "452002", "452003"]
+        },
+        {
+          "name": "Satna",
+          "pincodes": ["485001", "485002", "485004"]
+        }
+      ]
+    },
+    {
+      "name": "Maharashtra",
+      "cities": [
+        {
+          "name": "Mumbai",
+          "pincodes": ["400001", "400002", "400003"]
+        },
+        {
+          "name": "Pune",
+          "pincodes": ["411001", "411002", "411003"]
+        }
+      ]
+    },
+    {
+      "name": "Uttar Pradesh",
+      "cities": [
+        {
+          "name": "Lucknow",
+          "pincodes": ["226001", "226002", "226003"]
+        },
+        {
+          "name": "Kanpur",
+          "pincodes": ["208001", "208002"]
+        }
+      ]
+    }
+  ]
+}

@@ -1,497 +1,437 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { getProducts } from "../../lib/productApi";
-import { getInventory, transferStock } from "../../lib/inventoryAPI";
-import { getWarehouses } from "../../lib/WarehouseAPI";  
+import { getInventory, getStockMovements, transferStock } from "../../lib/inventoryAPI";
+import { getWarehouses } from "../../lib/WarehouseAPI";
 
-/* ─── Toast ────────────────────────────────── */
-const Toast = ({ message, type, onClose }) => {
-  const meta = {
-    success: { bg: "#28c76f", icon: "✅", text: "#fff" },
-    error:   { bg: "#ea5455", icon: "❌", text: "#fff" },
-    warn:    { bg: "#ff9f43", icon: "⚠️", text: "#fff" },
-  };
-  const m = meta[type] || meta.error;
-  return (
-    <div style={{
-      position: "fixed", top: 24, right: 24, zIndex: 9999,
-      background: m.bg, borderRadius: 12,
-      boxShadow: "0 8px 30px rgba(0,0,0,.2)",
-      padding: "14px 20px", display: "flex", alignItems: "center", gap: 12,
-      minWidth: 320, color: m.text,
-      animation: "tf-slidein .25s cubic-bezier(.34,1.56,.64,1)",
-    }}>
-      <span style={{ fontSize: 18 }}>{m.icon}</span>
-      <span style={{ fontSize: 13.5, fontWeight: 500, flex: 1 }}>{message}</span>
-      <button onClick={onClose} style={{ background: "none", border: "none", color: m.text, cursor: "pointer", fontSize: 18, padding: 0, opacity: 0.8 }}>×</button>
-    </div>
-  );
+const EMPTY_FORM = { productId: "", variantId: "", fromWarehouse: "", toWarehouse: "", quantity: "", notes: "" };
+
+const formatVariant = (variant) => {
+  if (!variant) return "-";
+  const attrs = Object.entries(variant.attributes || {});
+  return attrs.length ? attrs.map(([k, v]) => `${k}: ${v}`).join(", ") : "Default";
 };
 
-/* ─── Step indicator ───────────────────────── */
-const Step = ({ num, label, active, done }) => (
-  <div className="d-flex align-items-center gap-2">
-    <div
-      style={{
-        width: 32, height: 32, borderRadius: "50%",
-        display: "flex", alignItems: "center", justifyContent: "center",
-        fontSize: 13, fontWeight: 700, transition: "all .2s",
-        background: done ? "#28c76f" : active ? "#7367f0" : "rgba(115,103,240,.1)",
-        color: done || active ? "#fff" : "#7367f0",
-        boxShadow: active ? "0 0 0 4px rgba(115,103,240,.2)" : "none",
-      }}
-    >
-      {done ? "✓" : num}
+const fmtDate = (value) =>
+  value
+    ? new Date(value).toLocaleString("en-IN", {
+        day: "2-digit",
+        month: "short",
+        year: "numeric",
+        hour: "2-digit",
+        minute: "2-digit",
+      })
+    : "-";
+
+const Toast = ({ toast, onClose }) => (
+  <div
+    style={{
+      position: "fixed",
+      top: 24,
+      right: 24,
+      zIndex: 9999,
+      background: toast.type === "error" ? "#ea5455" : "#28c76f",
+      color: "#fff",
+      borderRadius: 12,
+      padding: "14px 16px",
+      minWidth: 320,
+      boxShadow: "0 10px 28px rgba(0,0,0,.18)",
+    }}
+  >
+    <div className="d-flex align-items-start gap-2">
+      <i className={`bx ${toast.type === "error" ? "bx-error-circle" : "bx-check-circle"}`} style={{ fontSize: 20 }} />
+      <div style={{ flex: 1, fontSize: 13.5 }}>{toast.message}</div>
+      <button type="button" onClick={onClose} style={{ border: "none", background: "transparent", color: "#fff", padding: 0 }}>
+        x
+      </button>
     </div>
-    <span style={{ fontSize: 13, fontWeight: active ? 600 : 400, color: active ? "#333" : "#aaa" }}>
-      {label}
-    </span>
   </div>
 );
 
-const StepDivider = () => (
-  <div style={{ flex: 1, height: 2, background: "#eef0f6", margin: "0 8px" }} />
-);
-
-/* ─── Field ────────────────────────────────── */
-const Field = ({ label, required, children, hint, error }) => (
+const Field = ({ label, required, error, hint, children }) => (
   <div>
-    <label className="form-label mb-1" style={{ fontSize: 12.5, fontWeight: 600, color: "#444", textTransform: "uppercase", letterSpacing: ".4px" }}>
-      {label}{required && <span className="text-danger ms-1">*</span>}
+    <label className="form-label mb-1" style={{ fontSize: 12, fontWeight: 700, textTransform: "uppercase", letterSpacing: ".4px" }}>
+      {label}
+      {required ? <span className="text-danger ms-1">*</span> : null}
     </label>
     {children}
-    {hint && !error && <div className="text-muted mt-1" style={{ fontSize: 11.5 }}>{hint}</div>}
-    {error && <div className="text-danger mt-1" style={{ fontSize: 11.5 }}><i className="bx bx-error-circle me-1" />{error}</div>}
+    {error ? <div className="text-danger mt-1" style={{ fontSize: 11.5 }}>{error}</div> : null}
+    {!error && hint ? <div className="text-muted mt-1" style={{ fontSize: 11.5 }}>{hint}</div> : null}
   </div>
 );
 
-/* ─── Main ─────────────────────────────────── */
 export default function Transfers() {
-  const [products,   setProducts]   = useState([]);
+  const [form, setForm] = useState({ ...EMPTY_FORM });
+  const [products, setProducts] = useState([]);
   const [warehouses, setWarehouses] = useState([]);
-  const [inventory,  setInventory]  = useState([]);
-
-  const [form, setForm] = useState({
-    productId:     "",
-    variantId:     "",
-    fromWarehouse: "",   // ← backend field name (not fromWarehouseId)
-    toWarehouse:   "",   // ← backend field name (not toWarehouseId)
-    quantity:      "",
-  });
-
-  const [errors,  setErrors]  = useState({});
-  const [loading, setLoading] = useState(false);
-  const [toast,   setToast]   = useState(null);
-  const [step,    setStep]    = useState(1); // 1=product, 2=route, 3=review
+  const [inventory, setInventory] = useState([]);
   const [recentTransfers, setRecentTransfers] = useState([]);
+  const [errors, setErrors] = useState({});
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [loadError, setLoadError] = useState("");
+  const [toast, setToast] = useState(null);
+  const [lastUpdated, setLastUpdated] = useState(null);
 
-  const showToast = (message, type = "success") => {
+  const pushToast = useCallback((message, type = "success") => {
     setToast({ message, type });
-    setTimeout(() => setToast(null), 4000);
-  };
-
-  useEffect(() => {
-    Promise.all([
-      getProducts().then(r => setProducts(r.data.data || [])),
-      getWarehouses().then(r => setWarehouses(r.data.data || [])),
-      getInventory().then(r => setInventory(r.data.data || [])),
-    ]);
+    window.clearTimeout(pushToast.timer);
+    pushToast.timer = window.setTimeout(() => setToast(null), 4000);
   }, []);
 
-  /* selected product's variants */
-  const selectedProduct = products.find(p => p._id === form.productId);
-  const variants = selectedProduct?.variants || [];
-
-  /* available stock in fromWarehouse for the selected product+variant */
-  const fromInventory = inventory.find(
-    i => i.productId?._id === form.productId &&
-         i.warehouseId?._id === form.fromWarehouse &&
-         (form.variantId ? i.variantId?.toString() === form.variantId : true)
-  );
-  const availableQty = fromInventory?.availableQuantity ?? 0;
-
-  /* validation */
-  const validate = () => {
-    const e = {};
-    if (!form.productId)     e.productId     = "Select a product";
-    if (!form.variantId)     e.variantId     = "Select a variant";
-    if (!form.fromWarehouse) e.fromWarehouse = "Select source warehouse";
-    if (!form.toWarehouse)   e.toWarehouse   = "Select destination warehouse";
-    if (form.fromWarehouse && form.toWarehouse && form.fromWarehouse === form.toWarehouse)
-      e.toWarehouse = "Source and destination must be different";
-    if (!form.quantity || Number(form.quantity) <= 0)
-      e.quantity = "Enter a valid quantity";
-    if (Number(form.quantity) > availableQty)
-      e.quantity = `Only ${availableQty} units available`;
-    setErrors(e);
-    return Object.keys(e).length === 0;
-  };
-
-  const handleField = (key, val) => {
-    setForm(p => ({ ...p, [key]: val }));
-    setErrors(p => ({ ...p, [key]: "" }));
-    // reset downstream fields
-    if (key === "productId") setForm(p => ({ ...p, productId: val, variantId: "", quantity: "" }));
-    if (key === "fromWarehouse") setForm(p => ({ ...p, fromWarehouse: val, quantity: "" }));
-  };
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    if (!validate()) return;
-    setLoading(true);
+  const loadData = useCallback(async (silent = false) => {
+    silent ? setRefreshing(true) : setLoading(true);
+    setLoadError("");
     try {
-      await transferStock({
-        productId:     form.productId,
-        variantId:     form.variantId,
-        fromWarehouse: form.fromWarehouse,
-        toWarehouse:   form.toWarehouse,
-        quantity:      Number(form.quantity),
-      });
+      const [productRes, warehouseRes, inventoryRes, movementRes] = await Promise.all([
+        getProducts(),
+        getWarehouses(),
+        getInventory(),
+        getStockMovements({ movementType: "TRANSFER" }),
+      ]);
 
-      // add to recent transfers log (UI only)
-      setRecentTransfers(prev => [{
-        id: Date.now(),
-        product: selectedProduct?.name,
-        from: warehouses.find(w => w._id === form.fromWarehouse)?.name,
-        to:   warehouses.find(w => w._id === form.toWarehouse)?.name,
-        qty:  form.quantity,
-        at:   new Date().toLocaleTimeString("en-IN"),
-      }, ...prev.slice(0, 4)]);
+      const productRows = productRes.data?.data || [];
+      const movementRows = movementRes.data?.data || [];
 
-      showToast(`Successfully transferred ${form.quantity} units of ${selectedProduct?.name}`, "success");
-
-      // reset form
-      setForm({ productId: "", variantId: "", fromWarehouse: "", toWarehouse: "", quantity: "" });
-      setStep(1);
-
-      // refresh inventory
-      getInventory().then(r => setInventory(r.data.data || []));
+      setProducts(productRows);
+      setWarehouses(warehouseRes.data?.data || []);
+      setInventory(inventoryRes.data?.data || []);
+      setRecentTransfers(
+        movementRows
+          .filter((row) => row.movementType === "TRANSFER" && row.quantity > 0)
+          .slice(0, 8)
+          .map((row) => {
+            const variant = productRows.find((p) => p._id === row.productId?._id)?.variants?.find((v) => v._id === row.variantId);
+            return {
+              id: row.transferGroupId || row._id,
+              productName: row.productId?.name || "-",
+              sku: row.productId?.sku || "-",
+              variantLabel: formatVariant(variant),
+              fromWarehouse: row.counterpartyWarehouseId?.name || "Source warehouse",
+              toWarehouse: row.warehouseId?.name || "Destination warehouse",
+              quantity: Math.abs(row.quantity),
+              date: row.date,
+              notes: row.notes || "",
+            };
+          })
+      );
+      setLastUpdated(new Date());
     } catch (err) {
-      const msg = err?.response?.data?.error || err?.response?.data?.message || "Transfer failed";
-      showToast(msg, "error");
+      setLoadError(err?.response?.data?.error || err?.response?.data?.message || "Failed to load transfer workspace");
     } finally {
       setLoading(false);
+      setRefreshing(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    loadData();
+    return () => window.clearTimeout(pushToast.timer);
+  }, [loadData, pushToast]);
+
+  const selectedProduct = useMemo(() => products.find((p) => p._id === form.productId), [products, form.productId]);
+  const variants = selectedProduct?.variants || [];
+  const selectedVariant = useMemo(() => variants.find((v) => v._id === form.variantId), [variants, form.variantId]);
+  const activeWarehouses = useMemo(() => warehouses.filter((w) => w.isActive), [warehouses]);
+
+  const sourceOptions = useMemo(() => {
+    if (!form.productId || !form.variantId) return [];
+    return inventory
+      .filter((row) => row.productId?._id === form.productId && String(row.variantId) === form.variantId && (row.availableQuantity || 0) > 0)
+      .map((row) => {
+        const warehouse = activeWarehouses.find((item) => item._id === row.warehouseId?._id);
+        if (!warehouse) return null;
+        return {
+          warehouseId: warehouse._id,
+          warehouseName: warehouse.name,
+          code: warehouse.code,
+          availableQuantity: row.availableQuantity || 0,
+          quantityOnHand: row.quantityOnHand || 0,
+          quantityReserved: row.quantityReserved || 0,
+          isLowStock: Boolean(row.isLowStock),
+        };
+      })
+      .filter(Boolean)
+      .sort((a, b) => b.availableQuantity - a.availableQuantity || a.warehouseName.localeCompare(b.warehouseName));
+  }, [activeWarehouses, form.productId, form.variantId, inventory]);
+
+  const selectedSource = useMemo(() => sourceOptions.find((item) => item.warehouseId === form.fromWarehouse) || null, [sourceOptions, form.fromWarehouse]);
+  const availableQty = selectedSource?.availableQuantity || 0;
+  const destinationOptions = useMemo(() => activeWarehouses.filter((w) => w._id !== form.fromWarehouse), [activeWarehouses, form.fromWarehouse]);
+  const selectedDestination = useMemo(() => warehouses.find((w) => w._id === form.toWarehouse) || null, [warehouses, form.toWarehouse]);
+
+  const validationErrors = useMemo(() => {
+    const next = {};
+    if (!form.productId) next.productId = "Select a product";
+    if (!form.variantId) next.variantId = "Select a variant";
+    if (!form.fromWarehouse) next.fromWarehouse = "Select a source warehouse";
+    if (!form.toWarehouse) next.toWarehouse = "Select a destination warehouse";
+    if (form.fromWarehouse && form.toWarehouse && form.fromWarehouse === form.toWarehouse) next.toWarehouse = "Warehouses must be different";
+    const qty = Number(form.quantity);
+    if (!form.quantity) next.quantity = "Enter a quantity";
+    else if (!Number.isFinite(qty) || qty <= 0) next.quantity = "Enter a valid quantity";
+    else if (qty > availableQty) next.quantity = `Only ${availableQty} units are available`;
+    if (form.notes.trim().length > 500) next.notes = "Notes must be under 500 characters";
+    return next;
+  }, [availableQty, form]);
+
+  const handleField = (key, value) => {
+    setForm((prev) => {
+      if (key === "productId") return { ...prev, productId: value, variantId: "", fromWarehouse: "", toWarehouse: "", quantity: "" };
+      if (key === "variantId") return { ...prev, variantId: value, fromWarehouse: "", toWarehouse: "", quantity: "" };
+      if (key === "fromWarehouse") return { ...prev, fromWarehouse: value, toWarehouse: prev.toWarehouse === value ? "" : prev.toWarehouse, quantity: "" };
+      return { ...prev, [key]: value };
+    });
+    setErrors((prev) => ({ ...prev, [key]: "" }));
+  };
+
+  const handleReset = () => {
+    setForm({ ...EMPTY_FORM });
+    setErrors({});
+  };
+
+  const handleSubmit = async (event) => {
+    event.preventDefault();
+    setErrors(validationErrors);
+    if (Object.keys(validationErrors).length) return;
+
+    setSubmitting(true);
+    try {
+      const response = await transferStock({
+        productId: form.productId,
+        variantId: form.variantId,
+        fromWarehouse: form.fromWarehouse,
+        toWarehouse: form.toWarehouse,
+        quantity: Number(form.quantity),
+        notes: form.notes.trim(),
+      });
+      const result = response.data?.data;
+      pushToast(`Transferred ${result?.quantity || form.quantity} units of ${selectedProduct?.name || "product"}.`);
+      handleReset();
+      await loadData(true);
+    } catch (err) {
+      pushToast(err?.response?.data?.error || err?.response?.data?.message || "Transfer failed", "error");
+    } finally {
+      setSubmitting(false);
     }
   };
 
-  const inp = { fontSize: 13.5, borderColor: errors ? "#e0e2e9" : "#e0e2e9" };
-  const fc = "tf-inp";
+  const summary = [
+    ["Product", selectedProduct?.name || "-"],
+    ["SKU", selectedProduct?.sku || "-"],
+    ["Variant", formatVariant(selectedVariant)],
+    ["From", selectedSource?.warehouseName || "-"],
+    ["To", selectedDestination?.name || "-"],
+    ["Available", availableQty ? `${availableQty} units` : "-"],
+    ["Transfer Qty", form.quantity ? `${form.quantity} units` : "-"],
+    ["Projected Balance", form.quantity && availableQty >= Number(form.quantity) ? `${availableQty - Number(form.quantity)} units` : "-"],
+  ];
 
-  const stepDone = (s) => {
-    if (s === 1) return !!(form.productId && form.variantId);
-    if (s === 2) return !!(form.fromWarehouse && form.toWarehouse && form.fromWarehouse !== form.toWarehouse);
-    return false;
-  };
+  const submitDisabled = loading || submitting || Object.keys(validationErrors).length > 0;
 
   return (
     <>
       <style>{`
-        @keyframes tf-slidein { from{opacity:0;transform:translateX(20px)} to{opacity:1;transform:translateX(0)} }
-        @keyframes tf-fadein  { from{opacity:0;transform:translateY(6px)} to{opacity:1;transform:translateY(0)} }
-        .tf-inp:focus { border-color:#7367f0!important;box-shadow:0 0 0 .18rem rgba(115,103,240,.2)!important; }
-        .tf-section { background:#fff;border-radius:12px;border:1px solid #eef0f6;padding:24px;animation:tf-fadein .22s ease; }
-        .tf-recent-item { padding:12px 0;border-bottom:1px solid #f0f1f5;animation:tf-fadein .2s ease; }
-        .tf-recent-item:last-child { border-bottom:none; }
-        .tf-variant-card { border:1px solid #e0e2e9;border-radius:10px;padding:12px 16px;cursor:pointer;transition:all .15s; }
-        .tf-variant-card:hover { border-color:#7367f0;background:rgba(115,103,240,.03); }
-        .tf-variant-card.selected { border-color:#7367f0;background:rgba(115,103,240,.06); }
+        .tf-card { background: #fff; border: 1px solid #eef0f6; border-radius: 16px; padding: 24px; box-shadow: 0 8px 24px rgba(34,41,47,.04); }
+        .tf-input:focus { border-color: #7367f0 !important; box-shadow: 0 0 0 .18rem rgba(115,103,240,.2) !important; }
+        .tf-choice { border: 1px solid #e0e2e9; border-radius: 12px; padding: 14px; cursor: pointer; transition: all .16s; height: 100%; }
+        .tf-choice:hover { border-color: #7367f0; background: rgba(115,103,240,.03); }
+        .tf-choice.active { border-color: #7367f0; background: rgba(115,103,240,.06); box-shadow: 0 8px 18px rgba(115,103,240,.12); }
+        .tf-recent { padding: 14px 0; border-bottom: 1px solid #f0f1f5; }
+        .tf-recent:last-child { border-bottom: none; padding-bottom: 0; }
       `}</style>
 
-      {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
+      {toast ? <Toast toast={toast} onClose={() => setToast(null)} /> : null}
 
       <div className="container-xxl container-p-y">
-
-        {/* ── Header ── */}
-        <div className="d-flex align-items-start justify-content-between flex-wrap gap-2 mb-4">
+        <div className="d-flex align-items-start justify-content-between flex-wrap gap-3 mb-4">
           <div>
-            <h4 className="fw-bold mb-1">
-              <i className="bx bx-transfer me-2 text-primary" />
-              Stock Transfer
-            </h4>
+            <h4 className="fw-bold mb-1"><i className="bx bx-transfer me-2 text-primary" />Stock Transfer</h4>
             <p className="text-muted mb-0" style={{ fontSize: 13 }}>
-              Move stock between warehouses with full movement logging
+              Real-time warehouse transfer with stock validation, notes, and audit history.
+              {lastUpdated ? <span className="ms-2">Last sync {fmtDate(lastUpdated)}</span> : null}
             </p>
           </div>
+          <button type="button" className="btn btn-outline-secondary btn-sm" onClick={() => loadData(true)} disabled={loading || refreshing}>
+            <i className={`bx bx-refresh me-1 ${refreshing ? "bx-spin" : ""}`} />Refresh
+          </button>
         </div>
 
-        {/* ── Step indicator ── */}
-        <div className="tf-section mb-4">
-          <div className="d-flex align-items-center">
-            <Step num={1} label="Select Product" active={step === 1} done={stepDone(1)} />
-            <StepDivider />
-            <Step num={2} label="Set Route"      active={step === 2} done={stepDone(2)} />
-            <StepDivider />
-            <Step num={3} label="Review & Transfer" active={step === 3} done={false} />
+        {loadError && !loading ? (
+          <div className="alert alert-danger mb-4 d-flex justify-content-between align-items-center">
+            <span>{loadError}</span>
+            <button type="button" className="btn btn-sm btn-outline-danger" onClick={() => loadData(false)}>Retry</button>
           </div>
-        </div>
+        ) : null}
 
         <form onSubmit={handleSubmit}>
           <div className="row g-4">
-
-            {/* ── LEFT: Form ── */}
             <div className="col-12 col-xl-8">
-
-              {/* Step 1: Product */}
-              <div className="tf-section mb-4">
-                <div className="d-flex align-items-center gap-2 mb-4" style={{ borderBottom: "1px solid #f0f1f5", paddingBottom: 12 }}>
-                  <div className="rounded-2 d-flex align-items-center justify-content-center flex-shrink-0"
-                    style={{ width: 30, height: 30, background: "rgba(115,103,240,.1)", fontSize: 15 }}>📦</div>
-                  <div>
-                    <div className="fw-semibold text-dark" style={{ fontSize: 13.5 }}>Product & Variant</div>
-                    <div className="text-muted" style={{ fontSize: 11.5 }}>Which product are you moving?</div>
-                  </div>
+              <div className="tf-card mb-4">
+                <div className="mb-4">
+                  <div className="fw-semibold">1. Product and variant</div>
+                  <div className="text-muted" style={{ fontSize: 12 }}>Transfers stay variant-level so movement history matches actual stock.</div>
                 </div>
-
                 <div className="row g-3">
                   <div className="col-12">
                     <Field label="Product" required error={errors.productId}>
-                      <select className={`form-select ${fc} ${errors.productId ? "is-invalid" : ""}`} style={inp}
-                        value={form.productId}
-                        onChange={e => handleField("productId", e.target.value)}>
-                        <option value="">Choose a product…</option>
-                        {products.map(p => (
-                          <option key={p._id} value={p._id}>{p.name} — SKU: {p.sku}</option>
+                      <select className="form-select tf-input" value={form.productId} onChange={(e) => handleField("productId", e.target.value)} disabled={loading}>
+                        <option value="">Select a product</option>
+                        {products.filter((p) => p.isActive !== false).sort((a, b) => a.name.localeCompare(b.name)).map((product) => (
+                          <option key={product._id} value={product._id}>{product.name} ({product.sku})</option>
                         ))}
                       </select>
                     </Field>
                   </div>
-
-                  {/* Variants */}
-                  {form.productId && variants.length > 0 && (
+                  {form.productId && variants.length > 0 ? (
                     <div className="col-12">
-                      <Field label="Variant" required error={errors.variantId}
-                        hint="Select which variant to transfer">
+                      <Field label="Variant" required error={errors.variantId}>
                         <div className="row g-2 mt-1">
-                          {variants.map((v) => {
-                            const attrStr = Object.entries(v.attributes || {})
-                              .map(([k, val]) => `${k}: ${val}`).join(", ") || "Default";
-                            return (
-                              <div key={v._id} className="col-md-4">
-                                <div
-                                  className={`tf-variant-card ${form.variantId === v._id ? "selected" : ""}`}
-                                  onClick={() => handleField("variantId", v._id)}
-                                >
-                                  <div className="fw-semibold" style={{ fontSize: 13, color: form.variantId === v._id ? "#7367f0" : "#333" }}>
-                                    {attrStr}
-                                  </div>
-                                  <div className="text-muted" style={{ fontSize: 11.5 }}>
-                                    ₹{v.price} · Cost ₹{v.cost}
-                                  </div>
-                                  {form.variantId === v._id && (
-                                    <div className="mt-1">
-                                      <span className="badge bg-label-primary" style={{ fontSize: 10 }}>Selected</span>
-                                    </div>
-                                  )}
-                                </div>
+                          {variants.map((variant) => (
+                            <div key={variant._id} className="col-md-6 col-lg-4">
+                              <div className={`tf-choice ${form.variantId === variant._id ? "active" : ""}`} onClick={() => handleField("variantId", variant._id)}>
+                                <div className="fw-semibold" style={{ fontSize: 13 }}>{formatVariant(variant)}</div>
+                                <div className="text-muted" style={{ fontSize: 11.5 }}>Price Rs. {variant.price} | Cost Rs. {variant.cost}</div>
                               </div>
-                            );
-                          })}
+                            </div>
+                          ))}
                         </div>
                       </Field>
                     </div>
-                  )}
-
-                  {form.productId && variants.length === 0 && (
-                    <div className="col-12">
-                      <div className="rounded-3 p-3" style={{ background: "rgba(234,84,85,.06)", border: "1px solid rgba(234,84,85,.2)", fontSize: 13, color: "#c0392b" }}>
-                        <i className="bx bx-info-circle me-2" />
-                        This product has no variants defined. Please add variants in the product form first.
-                      </div>
-                    </div>
-                  )}
+                  ) : null}
+                  {form.productId && variants.length === 0 ? <div className="col-12 text-danger" style={{ fontSize: 13 }}>This product has no variants, so it cannot be transferred with the current inventory model.</div> : null}
                 </div>
               </div>
 
-              {/* Step 2: Warehouse Route */}
-              <div className="tf-section mb-4" style={{ background: "#fafbff" }}>
-                <div className="d-flex align-items-center gap-2 mb-4" style={{ borderBottom: "1px solid #f0f1f5", paddingBottom: 12 }}>
-                  <div className="rounded-2 d-flex align-items-center justify-content-center flex-shrink-0"
-                    style={{ width: 30, height: 30, background: "rgba(0,207,232,.1)", fontSize: 15 }}>🏭</div>
-                  <div>
-                    <div className="fw-semibold text-dark" style={{ fontSize: 13.5 }}>Transfer Route</div>
-                    <div className="text-muted" style={{ fontSize: 11.5 }}>From warehouse → To warehouse</div>
-                  </div>
+              <div className="tf-card mb-4">
+                <div className="mb-4">
+                  <div className="fw-semibold">2. Route selection</div>
+                  <div className="text-muted" style={{ fontSize: 12 }}>Only active warehouses with available stock appear as source options.</div>
                 </div>
-
-                <div className="row g-3 align-items-end">
-                  {/* From */}
-                  <div className="col-md-5">
-                    <Field label="From Warehouse" required error={errors.fromWarehouse}>
-                      <select className={`form-select ${fc} ${errors.fromWarehouse ? "is-invalid" : ""}`} style={inp}
-                        value={form.fromWarehouse}
-                        onChange={e => handleField("fromWarehouse", e.target.value)}>
-                        <option value="">Select source…</option>
-                        {warehouses.filter(w => w.isActive).map(w => (
-                          <option key={w._id} value={w._id}>{w.name}</option>
+                <div className="row g-3">
+                  <div className="col-md-6">
+                    <Field label="From Warehouse" required error={errors.fromWarehouse} hint={sourceOptions.length ? "Live available stock is shown per warehouse." : "Choose a stocked variant first."}>
+                      <select className="form-select tf-input" value={form.fromWarehouse} onChange={(e) => handleField("fromWarehouse", e.target.value)} disabled={!sourceOptions.length}>
+                        <option value="">Select source warehouse</option>
+                        {sourceOptions.map((option) => (
+                          <option key={option.warehouseId} value={option.warehouseId}>{option.warehouseName} ({option.availableQuantity} available)</option>
                         ))}
                       </select>
                     </Field>
-                    {form.fromWarehouse && form.productId && form.variantId && (
-                      <div className="mt-2 d-flex align-items-center gap-2" style={{ fontSize: 12.5 }}>
-                        <span className="text-muted">Available:</span>
-                        <span className={`fw-bold ${availableQty === 0 ? "text-danger" : availableQty < 10 ? "text-warning" : "text-success"}`}>
-                          {availableQty} units
-                        </span>
+                    {selectedSource ? (
+                      <div className="rounded-3 p-3 mt-3" style={{ background: "#f8f9fc", border: "1px solid #eef0f6", fontSize: 12.5 }}>
+                        <div className="fw-semibold">{selectedSource.warehouseName}</div>
+                        <div className="text-muted mt-1">On hand {selectedSource.quantityOnHand} | Reserved {selectedSource.quantityReserved} | Available {selectedSource.availableQuantity}</div>
+                        <div className={selectedSource.isLowStock ? "text-warning mt-1" : "text-success mt-1"}>{selectedSource.isLowStock ? "Low stock" : "Healthy stock"}</div>
                       </div>
-                    )}
+                    ) : null}
                   </div>
-
-                  {/* Arrow */}
-                  <div className="col-md-2 text-center pb-2">
-                    <div style={{ fontSize: 24, color: "#7367f0" }}>
-                      <i className="bx bx-right-arrow-alt" />
-                    </div>
-                  </div>
-
-                  {/* To */}
-                  <div className="col-md-5">
+                  <div className="col-md-6">
                     <Field label="To Warehouse" required error={errors.toWarehouse}>
-                      <select className={`form-select ${fc} ${errors.toWarehouse ? "is-invalid" : ""}`} style={inp}
-                        value={form.toWarehouse}
-                        onChange={e => handleField("toWarehouse", e.target.value)}>
-                        <option value="">Select destination…</option>
-                        {warehouses.filter(w => w.isActive && w._id !== form.fromWarehouse).map(w => (
-                          <option key={w._id} value={w._id}>{w.name}</option>
+                      <select className="form-select tf-input" value={form.toWarehouse} onChange={(e) => handleField("toWarehouse", e.target.value)} disabled={!form.fromWarehouse}>
+                        <option value="">Select destination warehouse</option>
+                        {destinationOptions.map((warehouse) => (
+                          <option key={warehouse._id} value={warehouse._id}>{warehouse.name}</option>
                         ))}
                       </select>
                     </Field>
+                    {selectedDestination ? (
+                      <div className="rounded-3 p-3 mt-3" style={{ background: "#f8f9fc", border: "1px solid #eef0f6", fontSize: 12.5 }}>
+                        <div className="fw-semibold">{selectedDestination.name}</div>
+                        <div className="text-muted mt-1">Warehouse code {selectedDestination.code || "-"}</div>
+                        <div className="text-muted mt-1">Inventory will be incremented or created automatically.</div>
+                      </div>
+                    ) : null}
                   </div>
                 </div>
               </div>
 
-              {/* Step 3: Quantity */}
-              <div className="tf-section">
-                <div className="d-flex align-items-center gap-2 mb-4" style={{ borderBottom: "1px solid #f0f1f5", paddingBottom: 12 }}>
-                  <div className="rounded-2 d-flex align-items-center justify-content-center flex-shrink-0"
-                    style={{ width: 30, height: 30, background: "rgba(40,199,111,.1)", fontSize: 15 }}>🔢</div>
-                  <div>
-                    <div className="fw-semibold text-dark" style={{ fontSize: 13.5 }}>Quantity</div>
-                    <div className="text-muted" style={{ fontSize: 11.5 }}>How many units to transfer?</div>
-                  </div>
+              <div className="tf-card">
+                <div className="mb-4">
+                  <div className="fw-semibold">3. Execution</div>
+                  <div className="text-muted" style={{ fontSize: 12 }}>The backend posts a transactional transfer and logs both sides of the movement.</div>
                 </div>
-
                 <div className="row g-3">
                   <div className="col-md-4">
-                    <Field label="Transfer Quantity" required error={errors.quantity}
-                      hint={availableQty > 0 ? `Max: ${availableQty} units` : ""}>
+                    <Field label="Quantity" required error={errors.quantity} hint={availableQty ? `Maximum ${availableQty} units.` : "Select source inventory first."}>
                       <div className="input-group">
-                        <button type="button" className="btn btn-outline-secondary"
-                          style={{ borderColor: "#e0e2e9" }}
-                          onClick={() => setForm(p => ({ ...p, quantity: Math.max(0, Number(p.quantity) - 1).toString() }))}>
+                        <button type="button" className="btn btn-outline-secondary" onClick={() => handleField("quantity", String(Math.max(0, Number(form.quantity || 0) - 1)))} disabled={!availableQty}>
                           <i className="bx bx-minus" />
                         </button>
-                        <input type="number" className={`form-control text-center ${fc} ${errors.quantity ? "is-invalid" : ""}`}
-                          style={{ ...inp, fontWeight: 700, fontSize: 16 }}
-                          value={form.quantity}
-                          min={1} max={availableQty}
-                          onChange={e => handleField("quantity", e.target.value)} />
-                        <button type="button" className="btn btn-outline-secondary"
-                          style={{ borderColor: "#e0e2e9" }}
-                          onClick={() => setForm(p => ({ ...p, quantity: (Number(p.quantity) + 1).toString() }))}>
+                        <input type="number" className="form-control tf-input text-center" value={form.quantity} min="1" max={availableQty || undefined} onChange={(e) => handleField("quantity", e.target.value)} disabled={!availableQty} />
+                        <button type="button" className="btn btn-outline-secondary" onClick={() => handleField("quantity", String(Number(form.quantity || 0) + 1))} disabled={!availableQty}>
                           <i className="bx bx-plus" />
                         </button>
                       </div>
                     </Field>
                   </div>
-
-                  {/* Quick set buttons */}
-                  {availableQty > 0 && (
-                    <div className="col-md-8 d-flex align-items-end gap-2 flex-wrap">
-                      {[25, 50, 75, 100].map(pct => {
-                        const qty = Math.floor(availableQty * pct / 100);
-                        return qty > 0 ? (
-                          <button key={pct} type="button"
-                            className="btn btn-sm btn-outline-secondary"
-                            style={{ fontSize: 12, borderRadius: 8 }}
-                            onClick={() => handleField("quantity", qty.toString())}>
-                            {pct}% ({qty})
-                          </button>
-                        ) : null;
+                  <div className="col-md-8">
+                    <Field label="Notes" error={errors.notes} hint="Stored in stock movement history for audit and follow-up.">
+                      <textarea className="form-control tf-input" rows="4" value={form.notes} onChange={(e) => handleField("notes", e.target.value)} placeholder="Reason for transfer, reference, or handling instruction" />
+                    </Field>
+                  </div>
+                  {availableQty > 0 ? (
+                    <div className="col-12 d-flex gap-2 flex-wrap">
+                      {[25, 50, 75, 100].map((pct) => {
+                        const qty = Math.floor((availableQty * pct) / 100);
+                        return qty > 0 ? <button key={pct} type="button" className="btn btn-sm btn-outline-secondary" onClick={() => handleField("quantity", String(qty))}>{pct}% ({qty})</button> : null;
                       })}
-                      <button type="button"
-                        className="btn btn-sm btn-outline-primary"
-                        style={{ fontSize: 12, borderRadius: 8 }}
-                        onClick={() => handleField("quantity", availableQty.toString())}>
-                        All ({availableQty})
-                      </button>
                     </div>
-                  )}
+                  ) : null}
                 </div>
               </div>
             </div>
 
-            {/* ── RIGHT: Summary + Recent ── */}
             <div className="col-12 col-xl-4">
-
-              {/* Transfer summary */}
-              <div className="tf-section mb-4">
-                <div className="fw-semibold mb-3" style={{ fontSize: 13.5, color: "#333" }}>
-                  <i className="bx bx-receipt me-2 text-primary" />Transfer Summary
-                </div>
-
+              <div className="tf-card mb-4">
+                <div className="fw-semibold mb-3"><i className="bx bx-receipt me-2 text-primary" />Transfer Summary</div>
                 <div className="d-flex flex-column gap-2" style={{ fontSize: 13 }}>
-                  {[
-                    { label: "Product",     value: selectedProduct?.name || "—" },
-                    { label: "Variant",     value: form.variantId ? variants.find(v => v._id === form.variantId) ? Object.entries(variants.find(v => v._id === form.variantId)?.attributes || {}).map(([k,v]) => `${k}: ${v}`).join(", ") || "Default" : "—" : "—" },
-                    { label: "From",        value: warehouses.find(w => w._id === form.fromWarehouse)?.name || "—" },
-                    { label: "To",          value: warehouses.find(w => w._id === form.toWarehouse)?.name || "—" },
-                    { label: "Quantity",    value: form.quantity ? `${form.quantity} units` : "—", accent: true },
-                    { label: "Remaining",   value: form.quantity && availableQty ? `${availableQty - Number(form.quantity)} units` : "—" },
-                  ].map(({ label, value, accent }) => (
-                    <div key={label} className="d-flex justify-content-between align-items-center py-1"
-                      style={{ borderBottom: "1px dashed #f0f1f5" }}>
+                  {summary.map(([label, value]) => (
+                    <div key={label} className="d-flex justify-content-between py-1" style={{ borderBottom: "1px dashed #f0f1f5" }}>
                       <span className="text-muted">{label}</span>
-                      <span className={`fw-semibold text-truncate ms-3 ${accent ? "text-primary" : "text-dark"}`}
-                        style={{ maxWidth: 160, fontSize: accent ? 15 : 13 }}>
-                        {value}
-                      </span>
+                      <span className="fw-semibold text-end ms-3" style={{ maxWidth: 170 }}>{value}</span>
                     </div>
                   ))}
                 </div>
-
+                <div className="rounded-3 p-3 mt-3" style={{ background: "#f8f9fc", border: "1px solid #eef0f6", fontSize: 12.5 }}>
+                  <div className={form.productId && form.variantId ? "text-success" : "text-muted"}>Variant selected</div>
+                  <div className={form.fromWarehouse && form.toWarehouse ? "text-success" : "text-muted"}>Route selected</div>
+                  <div className={form.quantity && !validationErrors.quantity ? "text-success" : "text-muted"}>Quantity validated</div>
+                </div>
                 <div className="mt-4 d-flex flex-column gap-2">
-                  <button type="submit" className="btn btn-primary w-100" disabled={loading}
-                    style={{ borderRadius: 10, fontWeight: 600 }}>
-                    {loading
-                      ? <><span className="spinner-border spinner-border-sm me-2" style={{ width: 14, height: 14 }} />Transferring…</>
-                      : <><i className="bx bx-transfer me-2" />Execute Transfer</>}
+                  <button type="submit" className="btn btn-primary w-100" disabled={submitDisabled}>
+                    {submitting ? "Posting transfer..." : "Execute Transfer"}
                   </button>
-                  <button type="button" className="btn btn-outline-secondary w-100"
-                    style={{ borderRadius: 10 }}
-                    onClick={() => { setForm({ productId: "", variantId: "", fromWarehouse: "", toWarehouse: "", quantity: "" }); setErrors({}); setStep(1); }}>
-                    <i className="bx bx-reset me-1" />Reset
-                  </button>
+                  <button type="button" className="btn btn-outline-secondary w-100" onClick={handleReset}>Reset</button>
                 </div>
               </div>
 
-              {/* Recent transfers */}
-              {recentTransfers.length > 0 && (
-                <div className="tf-section">
-                  <div className="fw-semibold mb-3" style={{ fontSize: 13.5, color: "#333" }}>
-                    <i className="bx bx-history me-2 text-muted" />Recent Transfers
-                  </div>
-                  {recentTransfers.map(t => (
-                    <div key={t.id} className="tf-recent-item">
-                      <div className="fw-semibold" style={{ fontSize: 13 }}>{t.product}</div>
-                      <div className="text-muted" style={{ fontSize: 11.5 }}>
-                        {t.from} → {t.to} · <strong>{t.qty} units</strong>
+              <div className="tf-card mb-4">
+                <div className="fw-semibold mb-3"><i className="bx bx-history me-2 text-muted" />Recent Transfers</div>
+                {recentTransfers.length ? recentTransfers.map((item) => (
+                  <div key={item.id} className="tf-recent">
+                    <div className="d-flex justify-content-between gap-2">
+                      <div>
+                        <div className="fw-semibold" style={{ fontSize: 13 }}>{item.productName}</div>
+                        <div className="text-muted" style={{ fontSize: 11.5 }}>{item.variantLabel} | {item.sku}</div>
                       </div>
-                      <div className="text-muted" style={{ fontSize: 11 }}>{t.at}</div>
+                      <span className="badge bg-label-primary">{item.quantity} units</span>
                     </div>
-                  ))}
-                </div>
-              )}
+                    <div className="text-muted mt-2" style={{ fontSize: 12 }}>{item.fromWarehouse} to {item.toWarehouse}</div>
+                    <div className="text-muted" style={{ fontSize: 11.5 }}>{fmtDate(item.date)}</div>
+                    {item.notes ? <div style={{ fontSize: 11.5, color: "#666" }}>{item.notes}</div> : null}
+                  </div>
+                )) : <div className="text-muted" style={{ fontSize: 12.5 }}>No transfers recorded yet.</div>}
+              </div>
 
-              {/* Tips */}
-              <div className="rounded-3 p-4 mt-4" style={{ background: "#f8f9fc", border: "1px solid #eef0f6", fontSize: 12.5, color: "#555" }}>
-                <div className="fw-semibold mb-2" style={{ color: "#444", fontSize: 13 }}>
-                  <i className="bx bx-bulb me-1 text-warning" /> How it works
-                </div>
-                <ul className="mb-0 ps-3" style={{ lineHeight: 1.9 }}>
-                  <li>Stock is deducted from source warehouse</li>
-                  <li>Destination warehouse receives the stock</li>
-                  <li>Both movements are logged automatically</li>
-                  <li>You cannot exceed available quantity</li>
-                  <li>Inactive warehouses are excluded</li>
+              <div className="rounded-3 p-4" style={{ background: "#f8f9fc", border: "1px solid #eef0f6", fontSize: 12.5, color: "#555" }}>
+                <div className="fw-semibold mb-2" style={{ fontSize: 13, color: "#444" }}><i className="bx bx-shield-quarter me-1 text-warning" />ERP safeguards</div>
+                <ul className="mb-0 ps-3" style={{ lineHeight: 1.8 }}>
+                  <li>Reserved stock is not transferable.</li>
+                  <li>Inactive warehouses are blocked.</li>
+                  <li>Both sides of the transfer are logged.</li>
+                  <li>Destination stock is upserted automatically.</li>
+                  <li>Notes are saved into movement history.</li>
                 </ul>
               </div>
             </div>

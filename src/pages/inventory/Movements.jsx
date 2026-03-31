@@ -1,6 +1,6 @@
 import { useEffect, useState, useMemo, useCallback } from "react";
 import { getStockMovements } from "../../lib/inventoryAPI";
-import { getWarehouses } from "../../lib/WarehouseAPI";
+import { getWarehouses } from "../../lib/warehouseAPI";
 
 const fmtDate = (d) =>
   d ? new Date(d).toLocaleString("en-IN", { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" }) : "—";
@@ -219,64 +219,63 @@ export default function Movements() {
             onClick={() => setTypeFilter(typeFilter === "ADJUSTMENT" ? "" : "ADJUSTMENT")} />
         </div>
 
-        {/* Filter bar */}
+        {/* Filter bar — single line */}
         <div className="card mb-3" style={{ boxShadow: "0 1px 10px rgba(0,0,0,.05)", borderRadius: 12 }}>
-          <div className="card-body py-3 px-4">
-            <div className="row g-2 align-items-center">
-              <div className="col-12 col-md-3">
-                <div className="input-group input-group-sm">
-                  <span className="input-group-text bg-transparent border-end-0">
-                    <i className="bx bx-search text-muted" />
-                  </span>
-                  <input type="text" className="form-control border-start-0 mv-inp"
-                    placeholder="Search product, warehouse…"
-                    value={search} onChange={e => setSearch(e.target.value)} style={{ fontSize: 13 }} />
-                  {search && (
-                    <button className="btn btn-outline-secondary border-start-0" onClick={() => setSearch("")}>
-                      <i className="bx bx-x" />
-                    </button>
-                  )}
-                </div>
-              </div>
+          <div className="card-body py-2 px-3">
+            <div className="d-flex align-items-center gap-2 flex-nowrap">
 
-              <div className="col-12 col-md-4">
-                <div className="d-flex gap-1 flex-wrap">
-                  {["", "IN", "OUT", "TRANSFER", "ADJUSTMENT"].map(t => (
-                    <span key={t || "all"}
-                      className={`mv-tab ${typeFilter === t ? "active" : "text-muted"}`}
-                      onClick={() => setTypeFilter(t)}>
-                      {t || "All"}
-                    </span>
-                  ))}
-                </div>
-              </div>
-
-              <div className="col-6 col-md-2">
-                <select className="form-select form-select-sm mv-inp" value={warehouseFilter}
-                  onChange={e => setWarehouseFilter(e.target.value)} style={{ fontSize: 13 }}>
-                  <option value="">All Warehouses</option>
-                  {warehouses.map(w => <option key={w._id} value={w._id}>{w.name}</option>)}
-                </select>
-              </div>
-
-              <div className="col-6 col-md-2">
-                <div className="d-flex gap-1">
-                  <input type="date" className="form-control form-control-sm mv-inp" style={{ fontSize: 12 }}
-                    value={dateFrom} onChange={e => setDateFrom(e.target.value)} />
-                  <input type="date" className="form-control form-control-sm mv-inp" style={{ fontSize: 12 }}
-                    value={dateTo} onChange={e => setDateTo(e.target.value)} />
-                </div>
-              </div>
-
-              {hasFilters && (
-                <div className="col-auto">
-                  <button className="btn btn-sm"
-                    style={{ border: "1px solid #ea545530", color: "#ea5455", background: "#ea545508", fontSize: 12.5 }}
-                    onClick={resetFilters}>
-                    <i className="bx bx-filter-alt me-1" />Clear
+              {/* Search */}
+              <div className="input-group input-group-sm flex-shrink-0" style={{ width: 180 }}>
+                <span className="input-group-text bg-transparent border-end-0 px-2">
+                  <i className="bx bx-search text-muted" style={{ fontSize: 13 }} />
+                </span>
+                <input type="text" className="form-control border-start-0 mv-inp px-1"
+                  placeholder="Search…"
+                  value={search} onChange={e => setSearch(e.target.value)} style={{ fontSize: 12.5 }} />
+                {search && (
+                  <button className="btn btn-outline-secondary border-start-0 px-1" onClick={() => setSearch("")}>
+                    <i className="bx bx-x" style={{ fontSize: 13 }} />
                   </button>
-                </div>
-              )}
+                )}
+              </div>
+
+              {/* Type tabs */}
+              <div className="d-flex gap-1 flex-shrink-0">
+                {["", "IN", "OUT", "TRANSFER", "ADJUSTMENT"].map(t => (
+                  <span key={t || "all"}
+                    className={`mv-tab ${typeFilter === t ? "active" : "text-muted"}`}
+                    style={{ padding: "4px 10px", fontSize: 12 }}
+                    onClick={() => setTypeFilter(t)}>
+                    {t || "All"}
+                  </span>
+                ))}
+              </div>
+
+              {/* Warehouse */}
+              <select className="form-select form-select-sm mv-inp flex-shrink-0" value={warehouseFilter}
+                onChange={e => setWarehouseFilter(e.target.value)} style={{ fontSize: 12.5, width: 145 }}>
+                <option value="">All Warehouses</option>
+                {warehouses.map(w => <option key={w._id} value={w._id}>{w.name}</option>)}
+              </select>
+
+              {/* Date range */}
+              <div className="d-flex align-items-center gap-1 flex-shrink-0">
+                <input type="date" className="form-control form-control-sm mv-inp" style={{ fontSize: 12, width: 130 }}
+                  value={dateFrom} onChange={e => setDateFrom(e.target.value)} />
+                <span className="text-muted" style={{ fontSize: 11 }}>–</span>
+                <input type="date" className="form-control form-control-sm mv-inp" style={{ fontSize: 12, width: 130 }}
+                  value={dateTo} onChange={e => setDateTo(e.target.value)} />
+              </div>
+
+              {/* Clear */}
+              <div className="ms-auto flex-shrink-0" style={{ visibility: hasFilters ? "visible" : "hidden" }}>
+                <button className="btn btn-sm px-2"
+                  style={{ border: "1px solid #ea545530", color: "#ea5455", background: "#ea545508", fontSize: 12 }}
+                  onClick={resetFilters}>
+                  <i className="bx bx-x me-1" />Clear
+                </button>
+              </div>
+
             </div>
           </div>
         </div>

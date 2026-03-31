@@ -21,7 +21,7 @@ const Login = () => {
         try {
             const data = await login(formData.email, formData.password);
             setError('');
-            navigate(`/dashboard/${data.tenant.subdomain}`);
+            navigate(`/company/${data.tenant.subdomain}/dashboard`);
         } catch (err) {
 
             const errorData = err.response?.data;

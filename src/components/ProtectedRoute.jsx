@@ -1,26 +1,21 @@
-import { Navigate, useNavigate } from 'react-router-dom';
-import { useAuth } from '../context/AuthContext';
-import { useEffect } from 'react';
+import { Navigate, Outlet } from "react-router-dom";
+import { useAuth } from "../context/AuthContext";
 
-const ProtectedRoute = ({ children }) => {
-    const { isAuthenticated, loading } = useAuth();
-    const navigate = useNavigate();
+const ProtectedRoute = () => {
+  const { isAuthenticated, loading } = useAuth();
 
-    useEffect(() => {
-        const handleUnauthorized = () => {
-            if (!isAuthenticated && !loading) {
-                navigate('/tenant-login', { replace: true });
-            }
-        };
+  // wait for auth check
+  if (loading) {
+    return <div>Loading...</div>;
+  }
 
-        handleUnauthorized();
-    }, [isAuthenticated, loading, navigate]);
+  // not logged in
+  if (!isAuthenticated) {
+    return <Navigate to="/tenant-login" replace />;
+  }
 
-    if (loading) {
-        return <div>Loading...</div>;
-    }
-
-    return isAuthenticated ? children : <Navigate to="/tenant-login" replace />;
+  // ✅ IMPORTANT: render nested routes
+  return <Outlet />;
 };
 
 export default ProtectedRoute;

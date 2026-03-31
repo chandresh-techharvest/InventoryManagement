@@ -7,6 +7,11 @@ import Login from "./pages/auth/Login";
 
 import Dashboard from "./pages/dashboard/Dashboard";
 import DashboardLayout from "./layouts/DashboardLayout";
+import ProfileLayout from "./layouts/ProfileLayout";       // ← NEW
+
+// INFO MODULE
+import Profile  from "./pages/profile/Profile";
+import Settings from "./pages/settings/Settings";
 
 // INVENTORY MODULE
 import Categories from "./pages/inventory/Category/Categories";
@@ -23,9 +28,15 @@ import WarehouseForm from "./pages/inventory/warehouse/WarehouseForm";
 
 import Stock from "./pages/inventory/stock/Stock";
 import StockForm from "./pages/inventory/stock/StockForm";
-import LowStock from "./pages/inventory/LowStock";
 import Transfers from "./pages/inventory/Transfers";
 import Movements from "./pages/inventory/Movements";
+
+// PURCHASES MODULE
+import PurchaseOrders from "./pages/purchases/PurchaseOrders/PurchaseOrders";
+import PurchaseOrderForm from "./pages/purchases/PurchaseOrders/PurchaseOrderForm";
+
+import Suppliers from "./pages/purchases/Suppliers/Suppliers";
+import SupplierForm from "./pages/purchases/Suppliers/SupplierForm";
 
 function App() {
   return (
@@ -33,52 +44,62 @@ function App() {
       <AuthProvider>
         <Routes>
 
-          {/* AUTH */}
+          {/* ── AUTH ── */}
           <Route path="/" element={<Navigate to="/tenant-login" replace />} />
           <Route path="/tenant-registration" element={<TenantRegistration />} />
           <Route path="/tenant-login" element={<Login />} />
 
-          {/* DASHBOARD */}
-          <Route
-            path="/dashboard/:subdomain"
-            element={
-              <ProtectedRoute>
-                <DashboardLayout />
-              </ProtectedRoute>
-            }
-          >
-            <Route index element={<Dashboard />} />
+          {/* ── DASHBOARD LAYOUT (sidebar + navbar) ── */}
+          <Route path="/company/:subdomain" element={<ProtectedRoute />}>
+            <Route element={<DashboardLayout />}>
 
-            {/* ── PRODUCTS ── */}
-            <Route path="inventory/products"       element={<Products />} />
-            <Route path="inventory/products/new"   element={<ProductForm />} />
-            <Route path="inventory/products/:id"   element={<ProductForm />} />
+              <Route index element={<Navigate to="dashboard" replace />} />
 
-            {/* ── WAREHOUSES ── */}
-            <Route path="inventory/warehouses"     element={<Warehouse />} />
-            <Route path="inventory/warehouses/new" element={<WarehouseForm />} />
-            <Route path="inventory/warehouses/:id" element={<WarehouseForm />} />
+              {/* DASHBOARD */}
+              <Route path="dashboard" element={<Dashboard />} />
 
-            {/* ── PARENT CATEGORIES ── */}
-            <Route path="inventory/parent-categories"       element={<ParentCategoryList />} />
-            <Route path="inventory/parent-categories/new"   element={<ParentCategory />} />
-            <Route path="inventory/parent-categories/:id"   element={<ParentCategory />} />
+              {/* INVENTORY */}
+              <Route path="inventory/products"              element={<Products />} />
+              <Route path="inventory/products/new"          element={<ProductForm />} />
+              <Route path="inventory/products/:id"          element={<ProductForm />} />
 
-            {/* ── CATEGORIES ── */}
-            <Route path="inventory/categories"     element={<Categories />} />
-            <Route path="inventory/categories/new" element={<CategoryForm />} />
-            <Route path="inventory/categories/:id" element={<CategoryForm />} />
+              <Route path="inventory/warehouses"            element={<Warehouse />} />
+              <Route path="inventory/warehouses/new"        element={<WarehouseForm />} />
+              <Route path="inventory/warehouses/:id"        element={<WarehouseForm />} />
 
-            {/* ── STOCK ── */}
-            <Route path="inventory/stock"          element={<Stock />} />
-            <Route path="inventory/stock/add"      element={<StockForm />} />
-            <Route path="inventory/stock/edit/:id" element={<StockForm />} />
+              <Route path="inventory/categories"            element={<Categories />} />
+              <Route path="inventory/categories/new"        element={<CategoryForm />} />
+              <Route path="inventory/categories/:id"        element={<CategoryForm />} />
 
-            {/* ── OTHER INVENTORY ── */}
-            {/* <Route path="inventory/low-stock"  element={<LowStock />} /> */}
-            <Route path="inventory/transfers"  element={<Transfers />} />
-            <Route path="inventory/movements"  element={<Movements />} />
+              <Route path="inventory/parent-categories"     element={<ParentCategoryList />} />
+              <Route path="inventory/parent-categories/new" element={<ParentCategory />} />
+              <Route path="inventory/parent-categories/:id" element={<ParentCategory />} />
 
+              <Route path="inventory/stock"                 element={<Stock />} />
+              <Route path="inventory/stock/add"             element={<StockForm />} />
+              <Route path="inventory/stock/edit/:id"        element={<StockForm />} />
+
+              <Route path="inventory/transfers"             element={<Transfers />} />
+              <Route path="inventory/movements"             element={<Movements />} />
+
+              {/* PURCHASES */}
+              <Route path="purchases/purchase-orders"       element={<PurchaseOrders />} />
+              <Route path="purchases/purchase-orders/new"   element={<PurchaseOrderForm />} />
+              <Route path="purchases/purchase-orders/:id"   element={<PurchaseOrderForm />} />
+
+              <Route path="purchases/suppliers"             element={<Suppliers />} />
+              <Route path="purchases/suppliers/new"         element={<SupplierForm />} />
+              <Route path="purchases/suppliers/:id"         element={<SupplierForm />} />
+
+            </Route>
+          </Route>
+
+          {/* ── PROFILE LAYOUT (no sidebar — clean full page) ── */}
+          <Route path="/company/:subdomain" element={<ProtectedRoute />}>
+            <Route element={<ProfileLayout />}>
+              <Route path="profile"  element={<Profile />} />
+              <Route path="settings" element={<Settings />} />
+            </Route>
           </Route>
 
           {/* FALLBACK */}

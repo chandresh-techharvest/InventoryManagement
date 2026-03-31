@@ -199,12 +199,12 @@ export default function Sidebar() {
 
           <ul className="menu-sub">
             <li className="menu-item">
-              <Link to="/purchase-orders" className="menu-link" onClick={handleNavClick}>
+              <Link to={`/dashboard/${subdomain}/purchase-orders`} className="menu-link" onClick={handleNavClick}>
                 <div>Purchase Orders</div>
               </Link>
             </li>
             <li className="menu-item">
-              <Link to="/suppliers" className="menu-link" onClick={handleNavClick}>
+              <Link to={`/dashboard/${subdomain}/suppliers`} className="menu-link" onClick={handleNavClick}>
                 <div>Suppliers</div>
               </Link>
             </li>

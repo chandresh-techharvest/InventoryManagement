@@ -1,14 +1,13 @@
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { getProducts, deleteProduct } from "../../../lib/productApi";
-import { getCategories } from "../../../lib/categoryAPI";
+import { getSuppliers, deleteSupplier } from "../../../lib/suppliersAPI";
 
 /* ─────────────────────────────────────────────
    SKELETON ROW
 ───────────────────────────────────────────── */
 const SkeletonRow = () => (
   <tr>
-    {[40, 220, 100, 80, 60, 70, 100].map((w, i) => (
+    {[40, 80, 200, 160, 120, 110, 100].map((w, i) => (
       <td key={i} style={{ padding: "14px 16px" }}>
         <div
           style={{
@@ -16,10 +15,9 @@ const SkeletonRow = () => (
             borderRadius: 6,
             width: w,
             maxWidth: "100%",
-            background:
-              "linear-gradient(90deg,#f0f1f5 25%,#e4e6ed 50%,#f0f1f5 75%)",
+            background: "linear-gradient(90deg,#f0f1f5 25%,#e4e6ed 50%,#f0f1f5 75%)",
             backgroundSize: "200% 100%",
-            animation: "pr-shimmer 1.4s infinite",
+            animation: "sp-shimmer 1.4s infinite",
           }}
         />
       </td>
@@ -30,32 +28,23 @@ const SkeletonRow = () => (
 /* ─────────────────────────────────────────────
    STAT CARD
 ───────────────────────────────────────────── */
-const StatCard = ({ icon, label, value, accent, onClick, active }) => (
-  <div className="col-6 col-xl" style={{ minWidth: 120 }}>
+const StatCard = ({ icon, label, value, accent }) => (
+  <div className="col-6 col-xl" style={{ minWidth: 130 }}>
     <div
       className="card h-100 mb-0"
-      onClick={onClick}
       style={{
         borderTop: `3px solid ${accent}`,
-        boxShadow: active
-          ? `0 4px 16px ${accent}30`
-          : "0 1px 8px rgba(0,0,0,.06)",
+        boxShadow: "0 1px 8px rgba(0,0,0,.06)",
         transition: "all .18s",
-        cursor: onClick ? "pointer" : "default",
-        transform: active ? "translateY(-2px)" : "none",
-        background: active ? `${accent}06` : "#fff",
+        cursor: "default",
       }}
       onMouseEnter={(e) => {
-        if (!active) {
-          e.currentTarget.style.transform = "translateY(-2px)";
-          e.currentTarget.style.boxShadow = `0 6px 18px ${accent}28`;
-        }
+        e.currentTarget.style.transform = "translateY(-2px)";
+        e.currentTarget.style.boxShadow = `0 6px 18px ${accent}28`;
       }}
       onMouseLeave={(e) => {
-        if (!active) {
-          e.currentTarget.style.transform = "translateY(0)";
-          e.currentTarget.style.boxShadow = "0 1px 8px rgba(0,0,0,.06)";
-        }
+        e.currentTarget.style.transform = "translateY(0)";
+        e.currentTarget.style.boxShadow = "0 1px 8px rgba(0,0,0,.06)";
       }}
     >
       <div className="card-body d-flex align-items-center gap-3 py-3 px-3">
@@ -79,7 +68,7 @@ const StatCard = ({ icon, label, value, accent, onClick, active }) => (
 );
 
 /* ─────────────────────────────────────────────
-   CONFIRM MODAL
+   CONFIRM MODAL  (same as Products)
 ───────────────────────────────────────────── */
 const ConfirmModal = ({ title, message, confirmLabel, danger, onConfirm, onCancel, loading }) => (
   <div
@@ -89,7 +78,7 @@ const ConfirmModal = ({ title, message, confirmLabel, danger, onConfirm, onCance
       zIndex: 9999,
       display: "flex", alignItems: "center", justifyContent: "center",
       backdropFilter: "blur(2px)",
-      animation: "pr-fadein .15s ease",
+      animation: "sp-fadein .15s ease",
     }}
   >
     <div
@@ -98,7 +87,7 @@ const ConfirmModal = ({ title, message, confirmLabel, danger, onConfirm, onCance
         width: 400, borderRadius: 14,
         boxShadow: "0 20px 60px rgba(0,0,0,.22)",
         border: "none",
-        animation: "pr-popup .2s cubic-bezier(.34,1.56,.64,1)",
+        animation: "sp-popup .2s cubic-bezier(.34,1.56,.64,1)",
       }}
     >
       <div className="card-body p-4 text-center">
@@ -130,10 +119,10 @@ const ConfirmModal = ({ title, message, confirmLabel, danger, onConfirm, onCance
 );
 
 /* ─────────────────────────────────────────────
-   PRODUCT AVATAR (initials)
+   SUPPLIER AVATAR (initials)
 ───────────────────────────────────────────── */
-const ProductAvatar = ({ name }) => {
-  const colors = ["#7367f0","#28c76f","#00cfe8","#ff9f43","#ea5455","#82868b"];
+const SupplierAvatar = ({ name }) => {
+  const colors = ["#7367f0", "#28c76f", "#00cfe8", "#ff9f43", "#ea5455", "#82868b"];
   const idx = (name?.charCodeAt(0) || 0) % colors.length;
   const initials = (name || "?").slice(0, 2).toUpperCase();
   return (
@@ -154,18 +143,14 @@ const ProductAvatar = ({ name }) => {
 /* ─────────────────────────────────────────────
    MAIN COMPONENT
 ───────────────────────────────────────────── */
-export default function Products() {
+export default function Suppliers() {
   const navigate = useNavigate();
 
-  /* ── all original state unchanged ── */
-  const [products, setProducts]     = useState([]);
+  const [suppliers, setSuppliers]   = useState([]);
   const [filtered, setFiltered]     = useState([]);
-  const [categories, setCategories] = useState([]);
   const [loading, setLoading]       = useState(false);
 
-  const [filters, setFilters] = useState({
-    search: "", status: "", categoryId: "", stock: "",
-  });
+  const [filters, setFilters] = useState({ search: "", paymentTerms: "" });
 
   const [page, setPage]         = useState(1);
   const [pageSize, setPageSize] = useState(10);
@@ -173,58 +158,63 @@ export default function Products() {
   const [selected, setSelected]         = useState(new Set());
   const [bulkDeleting, setBulkDeleting] = useState(false);
 
-  /* UI-only state */
-  const [deleteTarget, setDeleteTarget]   = useState(null); // { id, name } | "bulk"
+  // modal: { id, name } for single | "bulk" for bulk | null = closed
+  const [deleteTarget, setDeleteTarget]     = useState(null);
   const [singleDeleting, setSingleDeleting] = useState(false);
 
-  /* ── all original logic unchanged ── */
-  const load = useCallback(async () => {
+  /* ── LOAD ───────────────────────────────────────────────── */
+  const load = async () => {
     setLoading(true);
     setSelected(new Set());
     setPage(1);
     try {
-      const params = {};
-      if (filters.search)     params.search     = filters.search;
-      if (filters.categoryId) params.categoryId = filters.categoryId;
-      if (filters.status !== "") params.isActive = filters.status === "active";
-      const res = await getProducts(params);
-      if (res.data.success) setProducts(res.data.data);
+      const res = await getSuppliers();
+      if (res.data.success) {
+        setSuppliers(res.data.data);
+        setFiltered(res.data.data);
+      }
     } finally {
       setLoading(false);
     }
-  }, [filters.search, filters.categoryId, filters.status]);
+  };
 
+  useEffect(() => { load(); }, []);
+
+  /* ── FRONTEND FILTERS ───────────────────────────────────── */
   useEffect(() => {
-    let data = [...products];
-    if (filters.stock === "in")  data = data.filter((p) => (p.stock ?? 0) > 0);
-    if (filters.stock === "out") data = data.filter((p) => (p.stock ?? 0) <= 0);
+    let data = [...suppliers];
+
+    if (filters.search) {
+      const q = filters.search.toLowerCase();
+      data = data.filter(
+        (s) =>
+          s.name?.toLowerCase().includes(q) ||
+          s.code?.toLowerCase().includes(q)
+      );
+    }
+
+    if (filters.paymentTerms) {
+      data = data.filter((s) => s.paymentTerms === filters.paymentTerms);
+    }
+
     setFiltered(data);
     setPage(1);
     setSelected(new Set());
-  }, [products, filters.stock]);
+  }, [filters, suppliers]);
 
-  useEffect(() => { load(); }, [load]);
-
-  useEffect(() => {
-    getCategories().then((res) => {
-      if (res.data.success) setCategories(res.data.data);
-    });
-  }, []);
-
-  /* pagination */
+  /* ── PAGINATION ─────────────────────────────────────────── */
   const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
   const paginated  = filtered.slice((page - 1) * pageSize, page * pageSize);
 
-  /* selection */
-  const pageIds        = paginated.map((p) => p._id);
-  const allPageSelected =
-    pageIds.length > 0 && pageIds.every((id) => selected.has(id));
+  /* ── SELECTION ──────────────────────────────────────────── */
+  const pageIds         = paginated.map((s) => s._id);
+  const allPageSelected = pageIds.length > 0 && pageIds.every((id) => selected.has(id));
 
   const toggleSelectAll = () => {
     setSelected((prev) => {
       const next = new Set(prev);
       if (allPageSelected) pageIds.forEach((id) => next.delete(id));
-      else                 pageIds.forEach((id) => next.add(id));
+      else                  pageIds.forEach((id) => next.add(id));
       return next;
     });
   };
@@ -237,12 +227,12 @@ export default function Products() {
     });
   };
 
-  /* delete — now uses modal */
+  /* ── DELETE SINGLE ──────────────────────────────────────── */
   const handleDelete = async () => {
     if (!deleteTarget || deleteTarget === "bulk") return;
     setSingleDeleting(true);
     try {
-      await deleteProduct(deleteTarget.id);
+      await deleteSupplier(deleteTarget.id);
       setDeleteTarget(null);
       load();
     } finally {
@@ -250,11 +240,12 @@ export default function Products() {
     }
   };
 
+  /* ── BULK DELETE ────────────────────────────────────────── */
   const handleBulkDelete = async () => {
     if (selected.size === 0) return;
     setBulkDeleting(true);
     try {
-      await Promise.all([...selected].map((id) => deleteProduct(id)));
+      await Promise.all([...selected].map((id) => deleteSupplier(id)));
       setDeleteTarget(null);
       load();
     } finally {
@@ -262,23 +253,19 @@ export default function Products() {
     }
   };
 
-  const handleFilterChange = (e) => {
+  const handleFilterChange = (e) =>
     setFilters((prev) => ({ ...prev, [e.target.name]: e.target.value }));
-  };
 
-  const resetFilters = () => {
-    setFilters({ search: "", status: "", categoryId: "", stock: "" });
-  };
+  const resetFilters = () => setFilters({ search: "", paymentTerms: "" });
 
-  /* derived stats */
-  const totalCount    = filtered.length;
-  const activeCount   = filtered.filter((p) => p.isActive).length;
-  const inStockCount  = filtered.filter((p) => (p.stock ?? 0) > 0).length;
-  const outStockCount = filtered.filter((p) => (p.stock ?? 0) <= 0).length;
+  /* ── STATS ──────────────────────────────────────────────── */
+  const totalCount     = filtered.length;
+  const withEmailCount = filtered.filter((s) => s.email).length;
+  const net30Count     = filtered.filter((s) => s.paymentTerms === "NET-30").length;
 
-  const hasFilters = filters.search || filters.status || filters.categoryId || filters.stock;
+  const hasFilters = filters.search || filters.paymentTerms;
 
-  /* page number array */
+  /* ── PAGE NUMBERS ───────────────────────────────────────── */
   const buildPages = () => {
     const pages = [];
     for (let i = 1; i <= totalPages; i++) {
@@ -288,34 +275,43 @@ export default function Products() {
     return pages.filter((v, i, a) => a[i - 1] !== v);
   };
 
+  /* ── PAYMENT TERMS BADGE COLOR ──────────────────────────── */
+  const termColor = (t = "") => {
+    const n = parseInt(t.replace("NET-", ""), 10);
+    if (n <= 10) return { bg: "bg-label-success", text: "" };
+    if (n <= 20) return { bg: "bg-label-info",    text: "" };
+    if (n <= 30) return { bg: "bg-label-primary",  text: "" };
+    return           { bg: "bg-label-warning",  text: "" };
+  };
+
   return (
     <>
       <style>{`
-        @keyframes pr-shimmer { 0%{background-position:200% 0} 100%{background-position:-200% 0} }
-        @keyframes pr-fadein  { from{opacity:0} to{opacity:1} }
-        @keyframes pr-popup   { from{opacity:0;transform:scale(.92)} to{opacity:1;transform:scale(1)} }
-        @keyframes pr-rowslide { from{opacity:0;transform:translateY(5px)} to{opacity:1;transform:translateY(0)} }
-        .pr-row { transition: background .12s; }
-        .pr-row:hover td { background: rgba(115,103,240,.03) !important; }
-        .pr-row.selected td { background: rgba(115,103,240,.05) !important; }
-        .pr-action { width:30px;height:30px;padding:0;display:inline-flex;align-items:center;
+        @keyframes sp-shimmer { 0%{background-position:200% 0} 100%{background-position:-200% 0} }
+        @keyframes sp-fadein  { from{opacity:0} to{opacity:1} }
+        @keyframes sp-popup   { from{opacity:0;transform:scale(.92)} to{opacity:1;transform:scale(1)} }
+        @keyframes sp-rowslide { from{opacity:0;transform:translateY(5px)} to{opacity:1;transform:translateY(0)} }
+        .sp-row { transition: background .12s; }
+        .sp-row:hover td { background: rgba(115,103,240,.03) !important; }
+        .sp-row.selected td { background: rgba(115,103,240,.05) !important; }
+        .sp-action { width:30px;height:30px;padding:0;display:inline-flex;align-items:center;
           justify-content:center;border-radius:8px;font-size:14px;transition:all .15s; }
-        .pr-action:hover { transform:translateY(-1px); box-shadow:0 3px 8px rgba(0,0,0,.12); }
-        .pr-search:focus  { border-color:#7367f0!important; box-shadow:0 0 0 .18rem rgba(115,103,240,.2)!important; }
-        .pr-select:focus  { border-color:#7367f0!important; box-shadow:0 0 0 .18rem rgba(115,103,240,.2)!important; }
-        .pr-pg { width:34px;height:34px;padding:0;border-radius:8px;display:inline-flex;
+        .sp-action:hover { transform:translateY(-1px); box-shadow:0 3px 8px rgba(0,0,0,.12); }
+        .sp-search:focus { border-color:#7367f0!important; box-shadow:0 0 0 .18rem rgba(115,103,240,.2)!important; }
+        .sp-select:focus { border-color:#7367f0!important; box-shadow:0 0 0 .18rem rgba(115,103,240,.2)!important; }
+        .sp-pg { width:34px;height:34px;padding:0;border-radius:8px;display:inline-flex;
           align-items:center;justify-content:center;font-size:13px;font-weight:500;transition:all .15s; }
-        .pr-pg.active  { background:#7367f0;border-color:#7367f0;color:#fff; }
-        .pr-pg:not(.active):not(:disabled):hover { border-color:#7367f0;color:#7367f0; }
-        .pr-cb { width:16px;height:16px;cursor:pointer;accent-color:#7367f0; }
-        .pr-badge-cat { font-size:11px;padding:3px 8px;border-radius:20px; }
+        .sp-pg.active  { background:#7367f0;border-color:#7367f0;color:#fff; }
+        .sp-pg:not(.active):not(:disabled):hover { border-color:#7367f0;color:#7367f0; }
+        .sp-cb { width:16px;height:16px;cursor:pointer;accent-color:#7367f0; }
+        .sp-badge { font-size:11px;padding:3px 8px;border-radius:20px; }
       `}</style>
 
-      {/* ── confirm modals ── */}
+      {/* ── CONFIRM MODALS ── */}
       {deleteTarget && deleteTarget !== "bulk" && (
         <ConfirmModal
-          title="Delete Product?"
-          message={<>Product <strong>{deleteTarget.name}</strong> will be permanently deleted.</>}
+          title="Delete Supplier?"
+          message={<>Supplier <strong>{deleteTarget.name}</strong> will be permanently deleted.</>}
           confirmLabel="Delete"
           danger
           onConfirm={handleDelete}
@@ -325,8 +321,8 @@ export default function Products() {
       )}
       {deleteTarget === "bulk" && (
         <ConfirmModal
-          title={`Delete ${selected.size} Products?`}
-          message={`All ${selected.size} selected products will be permanently deleted. This cannot be undone.`}
+          title={`Delete ${selected.size} Supplier${selected.size !== 1 ? "s" : ""}?`}
+          message={`All ${selected.size} selected suppliers will be permanently deleted. This cannot be undone.`}
           confirmLabel="Delete All"
           danger
           onConfirm={handleBulkDelete}
@@ -341,11 +337,11 @@ export default function Products() {
         <div className="d-flex align-items-start justify-content-between flex-wrap gap-2 mb-4">
           <div>
             <h4 className="fw-bold mb-1">
-              <i className="bx bx-cube me-2 text-primary" />
-              Products
+              <i className="bx bx-group me-2 text-primary" />
+              Suppliers
             </h4>
             <p className="text-muted mb-0" style={{ fontSize: 13 }}>
-              Manage your product catalogue, variants and stock status
+              Manage your supplier directory, contacts and payment terms
             </p>
           </div>
           <div className="d-flex gap-2 align-items-center">
@@ -367,18 +363,17 @@ export default function Products() {
             )}
             <Link to="new" className="btn btn-primary btn-sm">
               <i className="bx bx-plus me-1" />
-              Add Product
+              Add Supplier
             </Link>
           </div>
         </div>
 
         {/* ── STAT CARDS ── */}
         <div className="row g-3 mb-4">
-          <StatCard icon="📦" label="Total"     value={totalCount}    accent="#7367f0" />
-          <StatCard icon="✅" label="Active"    value={activeCount}   accent="#28c76f" />
-          <StatCard icon="🔴" label="Inactive"  value={totalCount - activeCount} accent="#ea5455" />
-          <StatCard icon="📈" label="In Stock"  value={inStockCount}  accent="#00cfe8" />
-          <StatCard icon="🚫" label="Out of Stock" value={outStockCount} accent="#ff9f43" />
+          <StatCard icon="🏭" label="Total"        value={totalCount}     accent="#7367f0" />
+          <StatCard icon="📧" label="With Email"   value={withEmailCount} accent="#28c76f" />
+          {/* <StatCard icon="📋" label="NET-30"       value={net30Count}     accent="#00cfe8" />
+          <StatCard icon="✅" label="On Page"      value={paginated.length} accent="#ff9f43" /> */}
         </div>
 
         {/* ── FILTER BAR ── */}
@@ -397,8 +392,8 @@ export default function Products() {
                     name="search"
                     value={filters.search}
                     onChange={handleFilterChange}
-                    placeholder="Search name or SKU…"
-                    className="form-control border-start-0 pr-search"
+                    placeholder="Search name or code…"
+                    className="form-control border-start-0 sp-search"
                     style={{ fontSize: 13 }}
                   />
                   {filters.search && (
@@ -412,43 +407,19 @@ export default function Products() {
                 </div>
               </div>
 
-              {/* category */}
-              <div className="col-6 col-md-auto" style={{ minWidth: 160 }}>
-                <select name="categoryId" value={filters.categoryId}
+              {/* payment terms */}
+              <div className="col-6 col-md-auto" style={{ minWidth: 170 }}>
+                <select
+                  name="paymentTerms"
+                  value={filters.paymentTerms}
                   onChange={handleFilterChange}
-                  className="form-select form-select-sm pr-select"
+                  className="form-select form-select-sm sp-select"
                   style={{ fontSize: 13 }}
                 >
-                  <option value="">All Categories</option>
-                  {categories.map((c) => (
-                    <option key={c._id} value={c._id}>{c.name}</option>
+                  <option value="">All Payment Terms</option>
+                  {["NET-5","NET-10","NET-15","NET-20","NET-25","NET-30","NET-35","NET-40","NET-45","NET-50"].map((t) => (
+                    <option key={t} value={t}>{t.replace("-", " ")}</option>
                   ))}
-                </select>
-              </div>
-
-              {/* status */}
-              <div className="col-6 col-md-auto" style={{ minWidth: 140 }}>
-                <select name="status" value={filters.status}
-                  onChange={handleFilterChange}
-                  className="form-select form-select-sm pr-select"
-                  style={{ fontSize: 13 }}
-                >
-                  <option value="">All Status</option>
-                  <option value="active">Active</option>
-                  <option value="inactive">Inactive</option>
-                </select>
-              </div>
-
-              {/* stock */}
-              <div className="col-6 col-md-auto" style={{ minWidth: 140 }}>
-                <select name="stock" value={filters.stock}
-                  onChange={handleFilterChange}
-                  className="form-select form-select-sm pr-select"
-                  style={{ fontSize: 13 }}
-                >
-                  <option value="">All Stock</option>
-                  <option value="in">In Stock</option>
-                  <option value="out">Out of Stock</option>
                 </select>
               </div>
 
@@ -457,7 +428,7 @@ export default function Products() {
                 <select
                   value={pageSize}
                   onChange={(e) => { setPageSize(Number(e.target.value)); setPage(1); }}
-                  className="form-select form-select-sm pr-select"
+                  className="form-select form-select-sm sp-select"
                   style={{ fontSize: 13 }}
                 >
                   {[10, 25, 50].map((n) => (
@@ -490,13 +461,13 @@ export default function Products() {
         {/* ── TABLE CARD ── */}
         <div className="card" style={{ boxShadow: "0 1px 10px rgba(0,0,0,.06)", borderRadius: 12 }}>
 
-          {/* header */}
+          {/* card header */}
           <div
             className="card-header d-flex align-items-center justify-content-between py-3"
             style={{ borderBottom: "1px solid #f0f1f5" }}
           >
             <div className="d-flex align-items-center gap-2">
-              <span className="fw-semibold" style={{ fontSize: 14 }}>Product List</span>
+              <span className="fw-semibold" style={{ fontSize: 14 }}>Supplier List</span>
               <span className="badge bg-label-primary" style={{ fontSize: 11 }}>
                 {filtered.length} item{filtered.length !== 1 ? "s" : ""}
               </span>
@@ -516,35 +487,30 @@ export default function Products() {
               <thead style={{ background: "#f8f9fc" }}>
                 <tr>
                   <th style={{ padding: "12px 16px", width: 44 }}>
-                    <input
-                      type="checkbox"
-                      className="pr-cb"
-                      checked={allPageSelected}
-                      onChange={toggleSelectAll}
-                    />
+                    <input type="checkbox" className="sp-cb" checked={allPageSelected} onChange={toggleSelectAll} />
                   </th>
-                  <th style={{ padding: "12px 16px", fontWeight: 600, color: "#444" }}>Product</th>
-                  <th style={{ padding: "12px 16px", fontWeight: 600, color: "#444" }}>Category</th>
-                  <th style={{ padding: "12px 16px", fontWeight: 600, color: "#444" }}>Variants</th>
-                  <th style={{ padding: "12px 16px", fontWeight: 600, color: "#444" }}>Stock</th>
-                  <th style={{ padding: "12px 16px", fontWeight: 600, color: "#444" }}>Status</th>
+                  <th style={{ padding: "12px 16px", fontWeight: 600, color: "#444" }}>Code</th>
+                  <th style={{ padding: "12px 16px", fontWeight: 600, color: "#444" }}>Supplier</th>
+                  <th style={{ padding: "12px 16px", fontWeight: 600, color: "#444" }}>Contact</th>
+                  <th style={{ padding: "12px 16px", fontWeight: 600, color: "#444" }}>Phone</th>
+                  <th style={{ padding: "12px 16px", fontWeight: 600, color: "#444" }}>Payment Terms</th>
                   <th style={{ padding: "12px 16px", fontWeight: 600, color: "#444", width: 90 }}>Actions</th>
                 </tr>
               </thead>
 
               <tbody>
-                {/* loading */}
+                {/* loading skeletons */}
                 {loading && [...Array(6)].map((_, i) => <SkeletonRow key={i} />)}
 
-                {/* empty */}
+                {/* empty state */}
                 {!loading && paginated.length === 0 && (
                   <tr>
                     <td colSpan="7" className="text-center py-5">
                       <div style={{ opacity: 0.5 }}>
-                        <i className="bx bx-cube d-block mb-2" style={{ fontSize: 46, color: "#7367f0" }} />
-                        <p className="fw-semibold mb-1">No products found</p>
+                        <i className="bx bx-group d-block mb-2" style={{ fontSize: 46, color: "#7367f0" }} />
+                        <p className="fw-semibold mb-1">No suppliers found</p>
                         <p className="text-muted mb-0" style={{ fontSize: 12.5 }}>
-                          {hasFilters ? "Try adjusting your filters" : "Add your first product to get started"}
+                          {hasFilters ? "Try adjusting your filters" : "Add your first supplier to get started"}
                         </p>
                         {hasFilters && (
                           <button className="btn btn-sm btn-link mt-2 p-0" onClick={resetFilters}>
@@ -556,107 +522,84 @@ export default function Products() {
                   </tr>
                 )}
 
-                {/* rows */}
-                {!loading && paginated.map((p, idx) => (
+                {/* data rows */}
+                {!loading && paginated.map((s, idx) => (
                   <tr
-                    key={p._id}
-                    className={`pr-row ${selected.has(p._id) ? "selected" : ""}`}
+                    key={s._id}
+                    className={`sp-row ${selected.has(s._id) ? "selected" : ""}`}
                     style={{
                       borderBottom: "1px solid #f0f1f5",
-                      animation: `pr-rowslide .2s ease ${idx * 0.025}s both`,
+                      animation: `sp-rowslide .2s ease ${idx * 0.025}s both`,
                     }}
                   >
                     {/* checkbox */}
                     <td style={{ padding: "13px 16px" }}>
-                      <input
-                        type="checkbox"
-                        className="pr-cb"
-                        checked={selected.has(p._id)}
-                        onChange={() => toggleSelect(p._id)}
-                      />
+                      <input type="checkbox" className="sp-cb" checked={selected.has(s._id)} onChange={() => toggleSelect(s._id)} />
                     </td>
 
-                    {/* product */}
+                    {/* code */}
+                    <td style={{ padding: "13px 16px" }}>
+                      <span
+                        style={{
+                          fontFamily: "monospace", fontSize: 11,
+                          background: "rgba(115,103,240,.1)", color: "#7367f0",
+                          padding: "2px 8px", borderRadius: 4,
+                        }}
+                      >
+                        {s.code}
+                      </span>
+                    </td>
+
+                    {/* supplier name + address */}
                     <td style={{ padding: "13px 16px" }}>
                       <div className="d-flex align-items-center gap-3">
-                        <ProductAvatar name={p.name} />
+                        <SupplierAvatar name={s.name} />
                         <div>
-                          <div className="fw-semibold text-dark">{p.name}</div>
+                          <div className="fw-semibold text-dark">{s.name}</div>
                           <div className="text-muted" style={{ fontSize: 11.5 }}>
-                            <span
-                              style={{
-                                fontFamily: "monospace", fontSize: 11,
-                                background: "rgba(115,103,240,.1)", color: "#7367f0",
-                                padding: "1px 6px", borderRadius: 4, marginRight: 6,
-                              }}
-                            >
-                              {p.sku}
-                            </span>
-                            {p.brand && <span>{p.brand}</span>}
+                            {[s.address?.street, s.address?.city, s.address?.state, s.address?.pincode]
+                              .filter(Boolean).join(", ") || "—"}
                           </div>
                         </div>
                       </div>
                     </td>
 
-                    {/* category */}
+                    {/* contact */}
                     <td style={{ padding: "13px 16px" }}>
-                      {p.categoryId?.name ? (
-                        <span className="badge bg-label-primary pr-badge-cat">
-                          {p.categoryId.name}
+                      <div className="fw-semibold">{s.contactPerson || "—"}</div>
+                      <div className="text-muted" style={{ fontSize: 11.5 }}>{s.email || ""}</div>
+                    </td>
+
+                    {/* phone */}
+                    <td style={{ padding: "13px 16px" }}>
+                      <span style={{ fontVariantNumeric: "tabular-nums" }}>{s.phone || "—"}</span>
+                    </td>
+
+                    {/* payment terms */}
+                    <td style={{ padding: "13px 16px" }}>
+                      {s.paymentTerms ? (
+                        <span className={`badge ${termColor(s.paymentTerms).bg} sp-badge`}>
+                          {s.paymentTerms.replace("-", " ")}
                         </span>
                       ) : (
                         <span className="text-muted">—</span>
                       )}
-                    </td>
-
-                    {/* variants */}
-                    <td style={{ padding: "13px 16px" }}>
-                      {p.variants?.length > 0 ? (
-                        <span className="badge bg-label-info pr-badge-cat">
-                          <i className="bx bx-layer me-1" style={{ fontSize: 11 }} />
-                          {p.variants.length} variant{p.variants.length !== 1 ? "s" : ""}
-                        </span>
-                      ) : (
-                        <span className="text-muted">—</span>
-                      )}
-                    </td>
-
-                    {/* stock */}
-                    <td style={{ padding: "13px 16px" }}>
-                      {(p.stock ?? 0) > 0 ? (
-                        <div className="d-flex align-items-center gap-2">
-                          <span className="rounded-circle" style={{ width: 7, height: 7, background: "#28c76f", display: "inline-block" }} />
-                          <span className="fw-semibold text-success">{p.stock}</span>
-                        </div>
-                      ) : (
-                        <div className="d-flex align-items-center gap-2">
-                          <span className="rounded-circle" style={{ width: 7, height: 7, background: "#ea5455", display: "inline-block" }} />
-                          <span className="fw-semibold text-danger">Out</span>
-                        </div>
-                      )}
-                    </td>
-
-                    {/* status */}
-                    <td style={{ padding: "13px 16px" }}>
-                      <span className={`badge ${p.isActive ? "bg-label-success" : "bg-label-secondary"} pr-badge-cat`}>
-                        {p.isActive ? "Active" : "Inactive"}
-                      </span>
                     </td>
 
                     {/* actions */}
                     <td style={{ padding: "13px 16px" }}>
                       <div className="d-flex gap-1">
                         <button
-                          className="pr-action btn btn-outline-primary"
-                          title="Edit product"
-                          onClick={() => navigate(`${p._id}`)}
+                          className="sp-action btn btn-outline-primary"
+                          title="Edit supplier"
+                          onClick={() => navigate(`${s._id}`)}
                         >
                           <i className="bx bx-edit-alt" />
                         </button>
                         <button
-                          className="pr-action btn btn-outline-danger"
-                          title="Delete product"
-                          onClick={() => setDeleteTarget({ id: p._id, name: p.name })}
+                          className="sp-action btn btn-outline-danger"
+                          title="Delete supplier"
+                          onClick={() => setDeleteTarget({ id: s._id, name: s.name })}
                         >
                           <i className="bx bx-trash" />
                         </button>
@@ -681,12 +624,12 @@ export default function Products() {
             <nav>
               <ul className="pagination pagination-sm mb-0 gap-1">
                 <li className={`page-item ${page === 1 ? "disabled" : ""}`}>
-                  <button className="pr-pg btn btn-outline-secondary" onClick={() => setPage(1)}>
+                  <button className="sp-pg btn btn-outline-secondary" onClick={() => setPage(1)}>
                     <i className="bx bx-chevrons-left" style={{ fontSize: 16 }} />
                   </button>
                 </li>
                 <li className={`page-item ${page === 1 ? "disabled" : ""}`}>
-                  <button className="pr-pg btn btn-outline-secondary" onClick={() => setPage((p) => p - 1)}>
+                  <button className="sp-pg btn btn-outline-secondary" onClick={() => setPage((p) => p - 1)}>
                     <i className="bx bx-chevron-left" style={{ fontSize: 16 }} />
                   </button>
                 </li>
@@ -694,12 +637,12 @@ export default function Products() {
                 {buildPages().map((pg, i) =>
                   pg === "…" ? (
                     <li key={`e${i}`} className="page-item disabled">
-                      <span className="pr-pg btn btn-outline-secondary" style={{ pointerEvents: "none" }}>…</span>
+                      <span className="sp-pg btn btn-outline-secondary" style={{ pointerEvents: "none" }}>…</span>
                     </li>
                   ) : (
                     <li key={pg}>
                       <button
-                        className={`pr-pg btn btn-outline-secondary ${page === pg ? "active" : ""}`}
+                        className={`sp-pg btn btn-outline-secondary ${page === pg ? "active" : ""}`}
                         onClick={() => setPage(pg)}
                       >
                         {pg}
@@ -709,12 +652,12 @@ export default function Products() {
                 )}
 
                 <li className={`page-item ${page === totalPages ? "disabled" : ""}`}>
-                  <button className="pr-pg btn btn-outline-secondary" onClick={() => setPage((p) => p + 1)}>
+                  <button className="sp-pg btn btn-outline-secondary" onClick={() => setPage((p) => p + 1)}>
                     <i className="bx bx-chevron-right" style={{ fontSize: 16 }} />
                   </button>
                 </li>
                 <li className={`page-item ${page === totalPages ? "disabled" : ""}`}>
-                  <button className="pr-pg btn btn-outline-secondary" onClick={() => setPage(totalPages)}>
+                  <button className="sp-pg btn btn-outline-secondary" onClick={() => setPage(totalPages)}>
                     <i className="bx bx-chevrons-right" style={{ fontSize: 16 }} />
                   </button>
                 </li>

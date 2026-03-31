@@ -16,6 +16,11 @@ import ParentCategory from './pages/inventory/Category/ParentCategoryForm';
 import ParentCategoryList from './pages/inventory/Category/ParentCategory';
 import Warehouse from './pages/inventory/warehouse/Warehouse';
 import WarehouseForm from './pages/inventory/warehouse/WarehouseForm';
+import Suppliers from './pages/Purchases/Suppliers/Suppliers';
+import SupplierForm from './pages/Purchases/Suppliers/SupplierForm';
+import PurchaseOrders from './pages/Purchases/PurchaseOrders/PurchaseOrders';
+import PurchaseOrderForm from './pages/Purchases/PurchaseOrders/PurchaseOrderForm';
+import PurchaseOrderDetail from './pages/Purchases/PurchaseOrders/PurchaseOrderDetail';
 
 function App() {
   return (
@@ -62,6 +67,20 @@ function App() {
             {/* <Route path="stock" element={<Stock />} />
             <Route path="lowStock" element={<LowStock />} />
             <Route path="transfers" element={<Transfers />} /> */}
+
+
+
+            {/* Purchases */}
+            {/* Purchase Orders */}
+              <Route path="purchase-orders" element={<PurchaseOrders />} />
+              <Route path="purchase-orders/new" element={<PurchaseOrderForm/>} />
+              <Route path="purchase-orders/:id" element={<PurchaseOrderDetail />} />
+
+            {/* Suppliers */}
+            <Route path="suppliers" element={<Suppliers />} />
+            <Route path="suppliers/new" element={<SupplierForm />} />
+            <Route path="suppliers/:id" element={<SupplierForm />} />
+
           </Route>
           <Route path="/dashboard" element={<Navigate to="/tenant-login" replace />} />
         </Routes>

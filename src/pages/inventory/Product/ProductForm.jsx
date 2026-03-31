@@ -64,6 +64,64 @@ const Toast = ({ message, type }) => {
 const VARIANT_COLORS = ["#7367f0", "#28c76f", "#00cfe8", "#ff9f43", "#ea5455", "#82868b"];
 
 /* ─────────────────────────────────────────────
+   HELPERS
+───────────────────────────────────────────── */
+const Field = ({ label, required, children, hint, col = "col-12" }) => (
+  <div className={col}>
+    <label className="form-label mb-1" style={{ fontSize: 12.5, fontWeight: 600, color: "#444", textTransform: "uppercase", letterSpacing: ".4px" }}>
+      {label}{required && <span className="text-danger ms-1">*</span>}
+    </label>
+    {children}
+    {hint && <div className="text-muted mt-1" style={{ fontSize: 11.5 }}>{hint}</div>}
+  </div>
+);
+
+const SectionHead = ({ icon, title, subtitle, action }) => (
+  <div className="d-flex align-items-center justify-content-between mb-3" style={{ borderBottom: "1px solid #f0f1f5", paddingBottom: 10 }}>
+    <div className="d-flex align-items-center gap-2">
+      <div
+        className="rounded-2 d-flex align-items-center justify-content-center flex-shrink-0"
+        style={{ width: 30, height: 30, background: "rgba(115,103,240,.1)", fontSize: 15 }}
+      >
+        {icon}
+      </div>
+      <div>
+        <div className="fw-semibold text-dark" style={{ fontSize: 13.5 }}>{title}</div>
+        {subtitle && <div className="text-muted" style={{ fontSize: 11.5 }}>{subtitle}</div>}
+      </div>
+    </div>
+    {action}
+  </div>
+);
+
+/* ─────────────────────────────────────────────
+   TOAST
+───────────────────────────────────────────── */
+const Toast = ({ message, type }) => {
+  const meta = { success: { border: "#28c76f", icon: "✅" }, error: { border: "#ea5455", icon: "❌" } };
+  const m = meta[type] || meta.error;
+  return (
+    <div style={{
+      position: "fixed", top: 24, right: 24, zIndex: 9999,
+      background: "#fff", borderRadius: 12,
+      boxShadow: "0 8px 30px rgba(0,0,0,.14)",
+      padding: "14px 20px",
+      display: "flex", alignItems: "center", gap: 12,
+      minWidth: 300, borderLeft: `4px solid ${m.border}`,
+      animation: "pf-slidein .25s cubic-bezier(.34,1.56,.64,1)",
+    }}>
+      <span style={{ fontSize: 18 }}>{m.icon}</span>
+      <span style={{ fontSize: 13.5, color: "#333", fontWeight: 500 }}>{message}</span>
+    </div>
+  );
+};
+
+/* ─────────────────────────────────────────────
+   VARIANT CARD COLORS (cycles)
+───────────────────────────────────────────── */
+const VARIANT_COLORS = ["#7367f0", "#28c76f", "#00cfe8", "#ff9f43", "#ea5455", "#82868b"];
+
+/* ─────────────────────────────────────────────
    MAIN COMPONENT
 ───────────────────────────────────────────── */
 export default function ProductForm() {
@@ -261,7 +319,6 @@ export default function ProductForm() {
           cost:  Number(v.cost),
         })),
       };
-      // console.log(payload);
       if (id) await updateProduct(id, payload);
       else    await createProduct(payload);
       showToast(id ? "Product updated successfully!" : "Product created successfully!", "success");

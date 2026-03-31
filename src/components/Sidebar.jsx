@@ -34,9 +34,9 @@ export default function Sidebar() {
     >
       {/* Brand */}
       <div className="app-brand demo">
-        <Link to={`/dashboard/${subdomain}`} className="app-brand-link">
+        <Link to={`/company/${subdomain}/dashboard`} className="app-brand-link">
           <span className="app-brand-logo demo">
-            <img src="/assets/img/favicon/favicon.ico" alt="Logo" width="25" />
+            <img src="/assets/img/favicon/favicon-1.png" alt="Logo" width="35" />
           </span>
           <span className="app-brand-text demo menu-text fw-bolder ms-2 text-capitalize">
             ERP System
@@ -46,10 +46,10 @@ export default function Sidebar() {
 
       <div className="menu-inner-shadow"></div>
 
-      <ul className="menu-inner py-1" style={{overflowY: "auto", maxHeight:"100vh"}}>
+      <ul className="menu-inner py-1" style={{overflowY: "auto",overflowX:"hidden",maxHeight:"100vh"}}>
         {/* Dashboard */}
         <li className="menu-item">
-          <Link to={`/dashboard/${subdomain}`} className="menu-link" onClick={handleNavClick}>
+          <Link to={`/company/${subdomain}/dashboard`} className="menu-link" onClick={handleNavClick}>
             <i className="menu-icon tf-icons bx bx-home-circle"></i>
             <div>Dashboard</div>
           </Link>
@@ -74,7 +74,7 @@ export default function Sidebar() {
             {/* WAREHOUSE */}
             <li className="menu-item">
               <Link
-                to={`/dashboard/${subdomain}/warehouses`}
+                to={`/company/${subdomain}/inventory/warehouses`}
                 className="menu-link"
                 onClick={handleNavClick}
               >
@@ -85,7 +85,7 @@ export default function Sidebar() {
             {/* PRODUCTS */}
             <li className="menu-item">
               <Link
-                to={`/dashboard/${subdomain}/products`}
+                to={`/company/${subdomain}/inventory/products`}
                 className="menu-link"
                 onClick={handleNavClick}
               >
@@ -106,7 +106,7 @@ export default function Sidebar() {
               <ul className="menu-sub">
                 <li className="">
                   <Link
-                    to={`/dashboard/${subdomain}/parent-categories`}
+                    to={`/company/${subdomain}/inventory/parent-categories`}
                     className="menu-link"
                     onClick={handleNavClick}
                   >
@@ -116,7 +116,7 @@ export default function Sidebar() {
 
                 <li className="">
                   <Link
-                    to={`/dashboard/${subdomain}/categories`}
+                    to={`/company/${subdomain}/inventory/categories`}
                     className="menu-link"
                     onClick={handleNavClick}
                   >
@@ -128,22 +128,29 @@ export default function Sidebar() {
 
             {/* STOCK */}
             <li className="menu-item">
-              <Link to="/stock" className="menu-link" onClick={handleNavClick}>
+              <Link to={`/company/${subdomain}/inventory/stock`} className="menu-link" onClick={handleNavClick}>
                 <div>Stock</div>
               </Link>
             </li>
 
             {/* LOW STOCK */}
-            <li className="menu-item">
-              <Link to="/low-stock" className="menu-link" onClick={handleNavClick}>
+            {/* <li className="menu-item">
+              <Link to={`/company/${subdomain}/inventory/low-stock`} className="menu-link" onClick={handleNavClick}>
                 <div>Low Stock</div>
               </Link>
-            </li>
+            </li> */}
 
             {/* TRANSFERS */}
             <li className="menu-item">
-              <Link to="/transfers" className="menu-link" onClick={handleNavClick}>
+              <Link to={`/company/${subdomain}/inventory/transfers`} className="menu-link" onClick={handleNavClick}>
                 <div>Transfers</div>
+              </Link>
+            </li>
+
+            {/* MOVEMENTS */}
+            <li className="menu-item">
+              <Link to={`/company/${subdomain}/inventory/movements`} className="menu-link">
+                <div>Stock Movements</div>
               </Link>
             </li>
 
@@ -166,17 +173,17 @@ export default function Sidebar() {
 
           <ul className="menu-sub">
             <li className="menu-item">
-              <Link to="/pos" className="menu-link" onClick={handleNavClick}>
+              <Link to={`/company/${subdomain}/pos`} className="menu-link" onClick={handleNavClick}>
                 <div>New Sale</div>
               </Link>
             </li>
             <li className="menu-item">
-              <Link to="/sales" className="menu-link" onClick={handleNavClick}>
+              <Link to={`/company/${subdomain}/sales`} className="menu-link" onClick={handleNavClick}>
                 <div>Sales List</div>
               </Link>
             </li>
             <li className="menu-item">
-              <Link to="/returns" className="menu-link">
+              <Link to={`/company/${subdomain}/returns`} className="menu-link">
                 <div>Returns</div>
               </Link>
             </li>
@@ -199,12 +206,12 @@ export default function Sidebar() {
 
           <ul className="menu-sub">
             <li className="menu-item">
-              <Link to={`/dashboard/${subdomain}/purchase-orders`} className="menu-link" onClick={handleNavClick}>
+              <Link to={`/company/${subdomain}/purchases/purchase-orders`} className="menu-link" onClick={handleNavClick}>
                 <div>Purchase Orders</div>
               </Link>
             </li>
             <li className="menu-item">
-              <Link to={`/dashboard/${subdomain}/suppliers`} className="menu-link" onClick={handleNavClick}>
+              <Link to={`/company/${subdomain}/purchases/suppliers`} className="menu-link" onClick={handleNavClick}>
                 <div>Suppliers</div>
               </Link>
             </li>
@@ -227,12 +234,12 @@ export default function Sidebar() {
 
           <ul className="menu-sub">
             <li className="menu-item">
-              <Link to="/reports/sales" className="menu-link" onClick={handleNavClick}>
+              <Link to={`/company/${subdomain}/reports/sales`} className="menu-link" onClick={handleNavClick}>
                 <div>Sales Report</div>
               </Link>
             </li>
             <li className="menu-item">
-              <Link to="/reports/inventory" className="menu-link" onClick={handleNavClick}>
+              <Link to={`/company/${subdomain}/reports/inventory`} className="menu-link" onClick={handleNavClick}>
                 <div>Inventory Report</div>
               </Link>
             </li>
@@ -255,12 +262,12 @@ export default function Sidebar() {
 
           <ul className="menu-sub">
             <li className="menu-item">
-              <Link to="/settings/business" className="menu-link" onClick={handleNavClick}>
+              <Link to={`/company/${subdomain}/settings/business`} className="menu-link" onClick={handleNavClick}>
                 <div>Business</div>
               </Link>
             </li>
             <li className="menu-item">
-              <Link to="/settings/users" className="menu-link" onClick={handleNavClick}>
+              <Link to={`/company/${subdomain}/settings/users`} className="menu-link" onClick={handleNavClick}>
                 <div>Users & Roles</div>
               </Link>
             </li>

@@ -2,7 +2,9 @@ import { useAuth } from "../context/AuthContext";
 import { Link } from "react-router-dom";
 
 export default function Navbar() {
-  const { user, logout } = useAuth();
+  const { user, tenant, logout } = useAuth();
+
+  const base = `/company/${tenant?.subdomain}`;
 
   const getInitials = (name) => {
     if (!name) return "U";
@@ -29,13 +31,12 @@ export default function Navbar() {
         </button>
       </div>
 
-      {/* RIGHT SIDE (search + avatar same row) */}
       <div className="navbar-nav-right d-flex align-items-center w-100">
 
         {/* Search */}
         <div className="navbar-nav align-items-center flex-grow-1">
           <div className="nav-item d-flex align-items-center w-100">
-            <i className="bx bx-search fs-4 lh-0"></i>
+            <i className="bx bx-search fs-4"></i>
             <input
               type="text"
               className="form-control border-0 shadow-none ms-2"
@@ -44,7 +45,7 @@ export default function Navbar() {
           </div>
         </div>
 
-        {/* Avatar RIGHT */}
+        {/* Avatar */}
         {user && (
           <ul className="navbar-nav flex-row align-items-center ms-3">
             <li className="nav-item navbar-dropdown dropdown-user dropdown">
@@ -61,17 +62,19 @@ export default function Navbar() {
               </a>
 
               <ul className="dropdown-menu dropdown-menu-end">
+
+                {/* USER INFO */}
                 <li>
                   <div className="dropdown-item">
                     <div className="d-flex">
-                      <div className="flex-shrink-0 me-3">
+                      <div className="me-3">
                         <div className="avatar avatar-online">
                           <span className="avatar-initial rounded-circle bg-primary text-white">
                             {getInitials(user.fullName)}
                           </span>
                         </div>
                       </div>
-                      <div className="flex-grow-1">
+                      <div>
                         <span className="fw-semibold d-block">
                           {user.fullName}
                         </span>
@@ -85,15 +88,16 @@ export default function Navbar() {
 
                 <li><div className="dropdown-divider"></div></li>
 
+                {/* ✅ FIXED ROUTES */}
                 <li>
-                  <Link className="dropdown-item" to="/profile">
+                  <Link className="dropdown-item" to={`${base}/profile`}>
                     <i className="bx bx-user me-2"></i>
                     My Profile
                   </Link>
                 </li>
 
                 <li>
-                  <Link className="dropdown-item" to="/settings">
+                  <Link className="dropdown-item" to={`${base}/settings`}>
                     <i className="bx bx-cog me-2"></i>
                     Settings
                   </Link>
@@ -107,11 +111,11 @@ export default function Navbar() {
                     Logout
                   </button>
                 </li>
+
               </ul>
             </li>
           </ul>
         )}
-
       </div>
     </nav>
   );

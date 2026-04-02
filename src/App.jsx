@@ -11,7 +11,7 @@ import ProfileLayout from "./layouts/ProfileLayout";       // ← NEW
 
 // INFO MODULE
 import Profile  from "./pages/profile/Profile";
-import Settings from "./pages/settings/Settings";
+// import Settings from "./pages/settings/Settings";
 
 // INVENTORY MODULE
 import Categories from "./pages/inventory/Category/Categories";
@@ -98,7 +98,7 @@ function App() {
           <Route path="/company/:subdomain" element={<ProtectedRoute />}>
             <Route element={<ProfileLayout />}>
               <Route path="profile"  element={<Profile />} />
-              <Route path="settings" element={<Settings />} />
+              {/* <Route path="settings" element={<Settings />} /> */}
             </Route>
           </Route>
 

@@ -11,7 +11,7 @@ export default function ProfileLayout() {
   const base          = `/company/${subdomain}`;
 
   const isProfile  = pathname.includes("/profile");
-  const isSettings = pathname.includes("/settings");
+  // const isSettings = pathname.includes("/settings");
 
   return (
     <div style={{ minHeight: "100vh", background: "#f4f5fb" }}>
@@ -53,15 +53,6 @@ export default function ProfileLayout() {
             transition: "all .15s",
           }}>
             <i className="bx bx-user me-1" />Profile
-          </Link>
-          <Link to={`${base}/settings`} style={{
-            padding: "6px 14px", borderRadius: 8,
-            fontSize: 13, fontWeight: 500, textDecoration: "none",
-            color: isSettings ? "#7367f0" : "#6e6b7b",
-            background: isSettings ? "rgba(115,103,240,.1)" : "transparent",
-            transition: "all .15s",
-          }}>
-            <i className="bx bx-cog me-1" />Settings
           </Link>
 
           <div style={{ width: 1, height: 20, background: "#e0e2e9", margin: "0 8px" }} />
